@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
+const { pipeline } = require('node:stream');
 
 module.exports = function createLocal({ dir }) {
   fs.mkdirSync(dir, { recursive: true });
@@ -42,8 +43,10 @@ module.exports = function createLocal({ dir }) {
         }
         h['Content-Length'] = end - start + 1;
         res.writeHead(status, h);
-        if (req.method === 'HEAD') return res.end();
-        fs.createReadStream(p, { start, end }).pipe(res);
+        if (req.method === 'HEAD' || st.size === 0) return res.end();
+        // pipeline() ferme le fichier si le client coupe la connexion, et une erreur de lecture
+        // (fichier supprimé entre-temps) ne termine que cette réponse, pas tout le serveur.
+        pipeline(fs.createReadStream(p, { start, end }), res, () => {});
       });
     },
   };

@@ -31,24 +31,32 @@ $('clicks').addEventListener('change', async (e) => {
     e.target.checked = false;
     showError('Sans l\'autorisation de Chrome, l\'effet de clic ne peut pas s\'afficher dans les pages.');
   }
+  // Option décochée : on rend l'accès aux pages, pour ne garder aucune autorisation inutile.
+  if (!e.target.checked) chrome.permissions.remove(PAGES).catch(() => {});
   savePrefs();
 });
 
-let clicksOn = false;
+// clicksGen change à chaque arrêt : un démarrage encore en cours voit qu'il a été annulé et défait ce qu'il a fait.
+let clicksGen = 0;
 chrome.scripting.unregisterContentScripts({ ids: ['ls-clicks'] }).catch(() => {}); // reste d'une session interrompue
 async function startClicks() {
-  if (!$('clicks').checked || !(await chrome.permissions.contains(PAGES))) return;
-  clicksOn = true;
+  const gen = ++clicksGen;
+  const cancelled = () => gen !== clicksGen;
+  if (!$('clicks').checked || !(await chrome.permissions.contains(PAGES)) || cancelled()) return;
   try {
     await chrome.scripting.unregisterContentScripts({ ids: ['ls-clicks'] }).catch(() => {});
+    if (cancelled()) return stopClicks();
     await chrome.scripting.registerContentScripts([{ id: 'ls-clicks', matches: ['http://*/*', 'https://*/*'], js: ['clicks.js'], runAt: 'document_start', allFrames: true, persistAcrossSessions: false }]);
   } catch (e) { console.warn('LocalShot clics :', e); }
+  if (cancelled()) return stopClicks();
   const tabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] }).catch(() => []);
+  if (cancelled()) return stopClicks();
   await Promise.all(tabs.map((t) => chrome.scripting.executeScript({ target: { tabId: t.id, allFrames: true }, files: ['clicks.js'] }).catch(() => {})));
+  if (cancelled()) return stopClicks();
 }
+// Retire toujours le script (sans dépendre d'un état qui pourrait être faux) et annule un démarrage en cours.
 async function stopClicks() {
-  if (!clicksOn) return;
-  clicksOn = false;
+  clicksGen++;
   await chrome.scripting.unregisterContentScripts({ ids: ['ls-clicks'] }).catch(() => {});
   const tabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] }).catch(() => []);
   for (const t of tabs) chrome.tabs.sendMessage(t.id, { type: 'ls-clicks-off' }).catch(() => {});
@@ -194,6 +202,7 @@ async function start() {
   $('count').textContent = '';
   if (bubble) { bubble.cd.hidden = true; bubble.bar.hidden = false; }
   await startClicks();
+  if (state !== 'countdown') return stopClicks(); // arrêté pendant la mise en place : cleanup() a déjà libéré l'écran
 
   recorder = new MediaRecorder(new MediaStream([vTrack, ...audio]), { mimeType: MIME, videoBitsPerSecond: 4_000_000, audioBitsPerSecond: 128_000 });
   chunks = [];

@@ -17,6 +17,18 @@ export function api(path, opts = {}) {
   return fetch(url + path, { ...opts, headers, credentials: 'omit' });
 }
 
+// Arrête un partage. Renvoie null si c'est confirmé par le serveur qui l'a émis, sinon la raison de l'échec.
+export async function revokeShare(rec) {
+  if (!rec.sharedId) return null;
+  const { url } = serverConf();
+  if (rec.sharedServer && rec.sharedServer !== url) return `partagé sur un autre serveur (${new URL(rec.sharedServer).host})`;
+  try {
+    const r = await api(`/api/captures/${encodeURIComponent(rec.sharedId)}`, { method: 'DELETE' });
+    if (r.ok || r.status === 404) return null;
+    return r.status === 401 || r.status === 403 ? 'clé d\'accès refusée' : `erreur du serveur (${r.status})`;
+  } catch { return 'serveur injoignable'; }
+}
+
 export function h(tag, attrs = {}, ...kids) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);

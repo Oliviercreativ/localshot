@@ -101,8 +101,28 @@ function isLocal(req) {
 const COOKIE = 'ls_session';
 const digest = (v) => crypto.createHash('sha256').update(String(v)).digest();
 const TOKEN_HASH = TOKEN ? digest(TOKEN) : null;
-// Le cookie de la galerie web ne contient pas la clé elle-même, seulement une empreinte dérivée.
-const SESSION = TOKEN ? crypto.createHmac('sha256', TOKEN).update('localshot-session').digest('base64url') : null;
+// Sessions de la galerie web : un identifiant aléatoire par connexion, gardé en mémoire côté serveur.
+// La déconnexion le supprime ; un redémarrage du serveur les invalide toutes.
+const SESSION_TTL = 30 * 24 * 3600 * 1000;
+const MAX_SESSIONS = 50;
+const sessions = new Map(); // empreinte de l'identifiant -> expiration
+const sessionKey = (s) => digest(s).toString('base64url');
+function newSession() {
+  const now = Date.now();
+  for (const [k, exp] of sessions) if (exp <= now) sessions.delete(k);
+  while (sessions.size >= MAX_SESSIONS) sessions.delete(sessions.keys().next().value);
+  const sid = crypto.randomBytes(32).toString('base64url');
+  sessions.set(sessionKey(sid), now + SESSION_TTL);
+  return sid;
+}
+function validSession(sid) {
+  if (!sid) return false;
+  const k = sessionKey(sid);
+  const exp = sessions.get(k);
+  if (!exp) return false;
+  if (exp <= Date.now()) { sessions.delete(k); return false; }
+  return true;
+}
 const sameSecret = (a, b) => a.length === b.length && crypto.timingSafeEqual(a, b);
 
 function cookies(req) {
@@ -119,8 +139,7 @@ function isAdmin(req) {
   if (!TOKEN) return isLocal(req);
   const m = /^Bearer\s+(.+)$/i.exec(req.headers.authorization || '');
   if (m) return sameSecret(digest(m[1].trim()), TOKEN_HASH);
-  const s = cookies(req)[COOKIE];
-  return !!s && sameSecret(digest(s), digest(SESSION));
+  return validSession(cookies(req)[COOKIE]);
 }
 
 const secureCookie = () => (PUBLIC_URL || '').startsWith('https:') ? '; Secure' : '';
@@ -245,6 +264,13 @@ async function upload(req, res) {
   json(res, 201, meta);
 }
 
+// Ce que voit un visiteur anonyme d'un lien de partage : pas de chemin local (file://) ni de détails internes.
+function publicView(c) {
+  const { id, kind, ext, title, width, height, duration, size, createdAt } = c;
+  const sourceUrl = /^https?:\/\//i.test(c.sourceUrl || '') ? c.sourceUrl : '';
+  return { id, kind, ext, title, width, height, duration, size, createdAt, sourceUrl, canEdit: false };
+}
+
 function serveFile(req, res, c, download) {
   const ext = c.ext || 'png';
   const driver = storage.of(c);
@@ -279,9 +305,11 @@ const server = http.createServer(async (req, res) => {
         await new Promise((r) => setTimeout(r, 800)); // ralentit les essais au hasard
         return json(res, 401, { error: 'Clé incorrecte' });
       }
-      return send(res, 204, '', 'text/plain', { 'Set-Cookie': `${COOKIE}=${SESSION}; Path=/; HttpOnly; SameSite=Strict; Max-Age=31536000${secureCookie()}` });
+      return send(res, 204, '', 'text/plain', { 'Set-Cookie': `${COOKIE}=${newSession()}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${SESSION_TTL / 1000}${secureCookie()}` });
     }
     if (method === 'POST' && p === '/api/logout') {
+      const sid = cookies(req)[COOKIE];
+      if (sid) sessions.delete(sessionKey(sid));
       return send(res, 204, '', 'text/plain', { 'Set-Cookie': `${COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secureCookie()}` });
     }
     if (method === 'GET' && (m = p.match(new RegExp(`^/c/${ID_RE}$`)))) {
@@ -307,7 +335,7 @@ const server = http.createServer(async (req, res) => {
     if ((m = p.match(new RegExp(`^/api/captures/${ID_RE}$`)))) {
       const c = find(m[1]);
       if (!c) return json(res, 404, { error: 'Introuvable' });
-      if (method === 'GET') return json(res, 200, { ...c, canEdit: local });
+      if (method === 'GET') return json(res, 200, local ? { ...c, canEdit: true } : publicView(c));
       if (!local) return json(res, TOKEN ? 401 : 403, { error: TOKEN ? 'Clé d\'accès requise' : 'Réservé à cette machine' });
       if (method === 'PATCH') {
         let body = {};

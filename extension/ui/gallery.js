@@ -1,5 +1,5 @@
 import { listCaptures, deleteCapture } from '../db.js';
-import { h, fmtDate, fmtSize, fmtDuration, isVideo, toast, download, api } from './common.js';
+import { h, fmtDate, fmtSize, fmtDuration, isVideo, toast, download, revokeShare } from './common.js';
 
 const grid = document.getElementById('grid');
 const q = document.getElementById('q');
@@ -24,7 +24,8 @@ function card(c) {
   const del = h('button', { class: 'card-del', title: 'Supprimer', 'aria-label': 'Supprimer' }, '✕');
   del.addEventListener('click', async () => {
     if (!confirm(`Supprimer « ${c.title} » ? Cette action est définitive.`)) return;
-    if (c.sharedId) api(`/api/captures/${c.sharedId}`, { method: 'DELETE' }).catch(() => {});
+    const why = await revokeShare(c);
+    if (why && !confirm(`Le lien partagé n'a pas pu être supprimé (${why}) : il fonctionne peut-être encore.\n\nSupprimer quand même la copie locale ?`)) return;
     await deleteCapture(c.id);
     items = items.filter((x) => x.id !== c.id);
     render();

@@ -1,5 +1,5 @@
 import { getCapture, updateCapture, deleteCapture } from '../db.js';
-import { fmtDate, fmtSize, fmtDuration, isVideo, toast, download, api, serverConf } from './common.js';
+import { fmtDate, fmtSize, fmtDuration, isVideo, toast, download, api, serverConf, revokeShare } from './common.js';
 
 const $ = (id) => document.getElementById(id);
 const id = new URLSearchParams(location.search).get('id');
@@ -49,7 +49,8 @@ if (!c) {
 
   $('del').addEventListener('click', async () => {
     if (!confirm(`Supprimer ${isVideo(c) ? 'cette vidéo' : 'cette capture'} ? Cette action est définitive.`)) return;
-    if (c.sharedId) await api(`/api/captures/${c.sharedId}`, { method: 'DELETE' }).catch(() => {});
+    const why = await revokeShare(c);
+    if (why && !confirm(`Le lien partagé n'a pas pu être supprimé (${why}) : il fonctionne peut-être encore.\n\nSupprimer quand même la copie locale ?`)) return;
     await deleteCapture(id);
     location.href = 'gallery.html';
   });
@@ -98,7 +99,7 @@ if (!c) {
       return toast('Clé d\'accès refusée', 'error');
     }
     if (!r.ok) return toast(r.status === 413 ? 'Fichier trop volumineux pour le partage' : 'Partage impossible', 'error');
-    c = await updateCapture(id, { sharedId: (await r.json()).id });
+    c = await updateCapture(id, { sharedId: (await r.json()).id, sharedServer: serverConf().url });
     await shownShare(hl);
     $('copyLink').click();
   });
@@ -109,8 +110,12 @@ if (!c) {
   });
 
   $('unshare').addEventListener('click', async () => {
-    await api(`/api/captures/${c.sharedId}`, { method: 'DELETE' }).catch(() => {});
-    c = await updateCapture(id, { sharedId: null });
+    const why = await revokeShare(c);
+    if (why) {
+      hint.textContent = `Impossible d'arrêter le partage : ${why}. Le lien fonctionne peut-être encore ; réessayez.`;
+      return toast('Partage non arrêté', 'error');
+    }
+    c = await updateCapture(id, { sharedId: null, sharedServer: null });
     hint.textContent = 'Partage arrêté : le lien ne fonctionne plus.';
     await shownShare(null);
   });

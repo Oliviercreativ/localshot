@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LocalShot — captures 100 % locales",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Captures d'écran et vidéos (onglet, fenêtre, écran) stockées uniquement dans votre navigateur.",
   "permissions": [
     "activeTab",

@@ -108,7 +108,7 @@ Clé et réglages : `/etc/localshot.env` sur le Pi. Journal : `journalctl -u loc
   `scripting` (défilement pour la page entière, cadre de sélection), `downloads` (téléchargement),
   `unlimitedStorage` (pas de limite de place pour les captures).
 - Permission facultative (seulement si vous cochez « Effet de clic ») : accès aux pages, utilisé uniquement
-  pendant un enregistrement vidéo pour dessiner les clics.
+  pendant un enregistrement vidéo pour dessiner les clics, et rendue à Chrome dès que vous décochez l'option.
 - Seule adresse réseau autorisée : `http://localhost:4777` (le serveur de partage, s'il est lancé),
   plus l'adresse de votre propre serveur si vous en réglez un (autorisation demandée pour cette seule adresse).
   Pas d'analytics, pas de compte, pas de cloud.
@@ -119,7 +119,9 @@ Serveur de partage :
 - Seules les captures dont on connaît le lien (`/c/<id>` aléatoire) sont visibles depuis le réseau ;
   la liste, l'ajout et la suppression ne sont possibles que depuis ce Mac.
 - Sur le Pi (`LOCALSHOT_TOKEN` défini) : liste, ajout et suppression exigent la clé d'accès
-  (en-tête `Authorization` pour l'extension, cookie `HttpOnly` + `SameSite=Strict` pour la galerie web).
+  (en-tête `Authorization` pour l'extension ; pour la galerie web, cookie `HttpOnly` + `SameSite=Strict`
+  contenant un identifiant de session aléatoire, révoqué à la déconnexion).
+- Un visiteur d'un lien de partage ne reçoit que les informations publiques de la capture (jamais le chemin d'un fichier local).
 - Vérification du `Host` (anti DNS-rebinding) et de l'`Origin`, pas de CORS, CSP stricte.
 
 ## Limites connues
