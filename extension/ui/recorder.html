@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Enregistrer une vidéo — LocalShot</title>
+  <link rel="icon" href="../icons/icon-32.png">
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="recorder.css">
+</head>
+<body class="rec">
+  <header class="rec-head">
+    <img src="../icons/icon-32.png" alt="" width="22" height="22">
+    <strong>Vidéo</strong>
+    <span class="pill">100&nbsp;% local</span>
+  </header>
+
+  <section id="setup">
+    <label class="opt"><input type="checkbox" id="mic"><span><b>Micro</b><small>Votre voix</small></span></label>
+    <label class="opt"><input type="checkbox" id="cam"><span><b>Caméra</b><small>Bulle flottante, visible si vous enregistrez l'écran entier</small></span></label>
+    <label class="opt"><input type="checkbox" id="sys"><span><b>Son de l'onglet</b><small>Le son de la page enregistrée (onglet Chrome uniquement)</small></span></label>
+    <label class="opt"><input type="checkbox" id="clicks"><span><b>Effet de clic</b><small>Un cercle orange à chaque clic dans les pages Chrome</small></span></label>
+    <video id="camPreview" class="cam-preview" autoplay muted playsinline hidden></video>
+    <button id="start" class="btn primary big">● Choisir quoi enregistrer</button>
+    <p class="hint">Chrome vous demandera de choisir un onglet, une fenêtre ou l'écran entier. Rien n'est envoyé sur Internet.</p>
+  </section>
+
+  <section id="live" hidden>
+    <div id="count" class="count"></div>
+    <div id="timer" class="timer">0:00</div>
+    <div id="liveState" class="muted">Enregistrement en cours</div>
+    <div class="live-actions">
+      <button id="pause" class="btn">❚❚ Pause</button>
+      <button id="stop" class="btn primary">■ Terminer</button>
+    </div>
+    <button id="cancel" class="btn danger small">Annuler sans enregistrer</button>
+    <p id="liveHint" class="hint"></p>
+  </section>
+
+  <section id="saving" hidden>
+    <div class="timer">…</div>
+    <p class="muted">Enregistrement de la vidéo dans LocalShot…</p>
+  </section>
+
+  <p id="error" class="error" hidden></p>
+  <script type="module" src="recorder.js"></script>
+</body>
+</html>

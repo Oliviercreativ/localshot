@@ -1,0 +1,14 @@
+# Données et secrets : ne jamais publier
+data/
+*.env
+.env*
+!.env.example
+
+# Dépendances / systèmes
+node_modules/
+.DS_Store
+
+# Fichiers de travail d'outils locaux
+.claude-flow/
+.swarm/
+.claude/

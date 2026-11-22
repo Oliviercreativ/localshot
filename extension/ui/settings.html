@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Serveur de partage — LocalShot</title>
+  <link rel="icon" href="../icons/icon-32.png">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="gallery.html"><img src="../icons/icon-128.png" alt=""><span>LocalShot</span></a>
+    <span class="pill">100&nbsp;% local</span>
+    <div class="spacer"></div>
+    <a class="btn" href="gallery.html">← Galerie</a>
+  </header>
+  <main class="wrap settings">
+    <h1>Serveur de partage</h1>
+    <p class="muted">Le serveur reçoit <b>uniquement</b> les captures que vous partagez. Par défaut, c'est le petit serveur de ce Mac.
+      Vous pouvez indiquer votre Raspberry Pi (adresse Tailscale, par exemple <code>https://pi.tailnet-1234.ts.net</code>).</p>
+
+    <form id="form">
+      <label for="url">Adresse du serveur</label>
+      <input id="url" type="url" required placeholder="http://localhost:4777" autocomplete="off" spellcheck="false">
+      <label for="key">Clé d'accès <small class="muted">(vide pour le serveur de ce Mac)</small></label>
+      <input id="key" type="password" autocomplete="off" spellcheck="false">
+      <div class="row">
+        <button class="btn primary" type="submit">Enregistrer et tester</button>
+        <button id="reset" class="btn" type="button">Revenir au serveur de ce Mac</button>
+      </div>
+    </form>
+    <p id="status" class="notice" hidden></p>
+    <p class="hint">Chrome vous demandera l'autorisation d'accéder à <b>cette seule adresse</b>. La clé reste dans Chrome, sur ce Mac.
+      Les captures non partagées ne quittent jamais votre ordinateur.</p>
+  </main>
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="settings.js"></script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LocalShot — Captures partagées</title>
+  <link rel="icon" href="/assets/icon.png">
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><img src="/assets/icon.png" alt=""><span>LocalShot</span></a>
+    <span class="pill">100&nbsp;% local</span>
+    <div class="spacer"></div>
+    <input id="q" class="search" type="search" placeholder="Rechercher une capture…" autocomplete="off">
+    <button id="logout" class="btn" hidden>Se déconnecter</button>
+  </header>
+  <main class="wrap">
+    <div class="head">
+      <h1>Captures partagées</h1>
+      <span id="count" class="muted"></span>
+    </div>
+    <div id="lan" class="notice" hidden></div>
+    <div id="grid" class="grid"></div>
+    <div id="empty" class="empty" hidden>
+      <h2>Aucune capture partagée</h2>
+      <p>Ouvrez une capture dans la galerie de l'extension et cliquez sur « Partager ».</p>
+    </div>
+  </main>
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="/assets/gallery.js"></script>
+</body>
+</html>

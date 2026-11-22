@@ -1,0 +1,17 @@
+{
+  "name": "localshot",
+  "version": "0.5.0",
+  "private": true,
+  "description": "Alternative open source et respectueuse de la vie privée à Loom : captures d'écran et vidéos locales, partage auto-hébergé.",
+  "scripts": {
+    "start": "node server/server.js",
+    "start:lan": "node server/server.js --lan",
+    "icons": "node tools/make-icons.js",
+    "test": "node --test server/test/*.test.js",
+    "start:env": "node --env-file=.env server/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "AGPL-3.0-or-later"
+}

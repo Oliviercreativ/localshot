@@ -1,0 +1,18 @@
+body.rec { min-height: 0; padding: 16px 18px 20px; background: #fff; font-size: 14px; }
+.rec-head { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 16px; }
+.rec-head .pill { margin-left: auto; }
+.opt { display: flex; gap: 12px; align-items: flex-start; padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; cursor: pointer; }
+.opt:hover { border-color: #fdba74; background: #fffaf5; }
+.opt input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--accent); }
+.opt span { display: flex; flex-direction: column; gap: 2px; }
+.opt small { color: var(--muted); font-size: 12px; }
+.cam-preview { display: block; width: 120px; height: 120px; object-fit: cover; border-radius: 50%; margin: 6px auto 4px; transform: scaleX(-1); background: #0f172a; }
+.btn.big { width: 100%; justify-content: center; padding: 14px; font-size: 15px; margin-top: 8px; }
+.btn.small { padding: 7px 10px; font-size: 12px; margin-top: 10px; }
+#live, #saving { text-align: center; padding-top: 10px; }
+.timer { font: 700 46px/1.1 ui-monospace, Menlo, monospace; margin: 10px 0 4px; }
+.count { font: 800 64px/1 -apple-system, system-ui, sans-serif; color: var(--accent); min-height: 0; }
+.live-actions { display: flex; gap: 8px; justify-content: center; margin-top: 16px; }
+.live-actions .btn { flex: 1; justify-content: center; padding: 12px; }
+.error { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #fef2f2; color: var(--danger); font-size: 13px; }
+html:has(body.rec) { background: #fff; }

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LocalShot — Mes captures et vidéos</title>
+  <link rel="icon" href="../icons/icon-32.png">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="gallery.html"><img src="../icons/icon-128.png" alt=""><span>LocalShot</span></a>
+    <span class="pill">100&nbsp;% local</span>
+    <span id="storage" class="storage"></span>
+    <div class="spacer"></div>
+    <input id="q" class="search" type="search" placeholder="Rechercher…" autocomplete="off">
+    <a class="btn" href="settings.html">Serveur</a>
+    <button id="exportAll" class="btn">Tout télécharger</button>
+  </header>
+  <main class="wrap">
+    <div class="head">
+      <h1>Mes captures</h1>
+      <span id="count" class="muted"></span>
+    </div>
+    <div class="notice subtle">Les captures et vidéos sont stockées dans Chrome, sur ce Mac uniquement. Attention : désinstaller l'extension les efface. Pensez à « Tout télécharger » avant.</div>
+    <div id="grid" class="grid"></div>
+    <div id="empty" class="empty" hidden>
+      <h2>Aucune capture pour l'instant</h2>
+      <p>Cliquez sur l'icône LocalShot dans Chrome, ou utilisez les raccourcis&nbsp;:</p>
+      <ul>
+        <li><kbd>⌥</kbd><kbd>⇧</kbd><kbd>V</kbd> partie visible</li>
+        <li><kbd>⌥</kbd><kbd>⇧</kbd><kbd>F</kbd> page entière</li>
+        <li><kbd>⌥</kbd><kbd>⇧</kbd><kbd>S</kbd> zone sélectionnée</li>
+        <li><kbd>⌥</kbd><kbd>⇧</kbd><kbd>R</kbd> vidéo (démarrer / terminer)</li>
+      </ul>
+    </div>
+  </main>
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="gallery.js"></script>
+</body>
+</html>
