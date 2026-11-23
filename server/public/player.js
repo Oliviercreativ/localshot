@@ -36,13 +36,18 @@ function iconBtn(cls, label, icon) {
 
 /**
  * Crée le lecteur. Renvoie l'élément à insérer dans la page ; la balise <video> est dans `.video`.
- * @param {{ src: string, poster?: string, duration?: number }} opts
+ * @param {{ src: string, poster?: string, duration?: number, noDownload?: boolean }} opts
  */
-export function createPlayer({ src, poster, duration: knownDuration }) {
+export function createPlayer({ src, poster, duration: knownDuration, noDownload = false }) {
   const root = el('div', 'lsp is-paused', { tabindex: '0' });
   const video = el('video', 'lsp-video', { playsinline: '', preload: 'metadata' });
   video.src = src;
   if (poster) video.poster = poster;
+  if (noDownload) {
+    // Dissuasif seulement : une vidéo affichée peut toujours être enregistrée par un visiteur déterminé.
+    video.setAttribute('controlslist', 'nodownload');
+    root.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
 
   const big = iconBtn('lsp-big', 'Lire', 'play');
   const replay = iconBtn('lsp-big lsp-replay', 'Revoir', 'back');

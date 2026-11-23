@@ -1,4 +1,5 @@
 import { serverConf, saveServerConf, DEFAULT_SERVER, api, toast } from './common.js';
+import { saveConf, setSaveConf, cleanSub, pickFolder, canPickFolder, folderAccess } from './savefolder.js';
 
 const $ = (id) => document.getElementById(id);
 const conf = serverConf();
@@ -68,3 +69,35 @@ $('reset').addEventListener('click', async () => {
 });
 
 if (conf.url !== DEFAULT_SERVER || conf.key) test();
+
+// ---------- Dossier de sauvegarde ----------
+async function showSave() {
+  const c = saveConf();
+  for (const r of document.querySelectorAll('[name=saveMode]')) r.checked = r.value === c.mode;
+  $('sub').value = c.sub;
+  $('auto').checked = c.auto;
+  $('folderName').textContent = c.folderName ? `: « ${c.folderName} »` : '';
+  const where = c.mode === 'folder' && c.folderName ? `le dossier « ${c.folderName} »` : `Téléchargements${c.sub ? '/' + c.sub : ''}`;
+  let msg = `Les fichiers seront enregistrés dans ${where}.`;
+  if (c.mode === 'folder' && (await folderAccess()) === 'prompt') msg += ' Chrome redemandera l\'autorisation au prochain enregistrement (après un redémarrage, par exemple).';
+  $('saveStatus').textContent = msg;
+}
+if (!canPickFolder()) { $('pick').disabled = true; $('folderName').textContent = '(non disponible dans ce navigateur)'; }
+for (const r of document.querySelectorAll('[name=saveMode]')) {
+  r.addEventListener('change', async () => {
+    if (r.value === 'folder' && !saveConf().folderName) {
+      if (!(await pickFolder())) { toast('Aucun dossier choisi'); return showSave(); }
+    }
+    setSaveConf({ mode: r.value });
+    showSave();
+  });
+}
+$('pick').addEventListener('click', async (e) => {
+  e.preventDefault();
+  const name = await pickFolder();
+  if (name) toast(`Dossier « ${name} » choisi`);
+  showSave();
+});
+$('sub').addEventListener('change', () => { setSaveConf({ sub: cleanSub($('sub').value) }); showSave(); });
+$('auto').addEventListener('change', () => { setSaveConf({ auto: $('auto').checked }); showSave(); });
+showSave();

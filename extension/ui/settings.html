@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Serveur de partage — LocalShot</title>
+  <title>Réglages — LocalShot</title>
   <link rel="icon" href="../icons/icon-32.png">
   <link rel="stylesheet" href="app.css">
 </head>
@@ -15,7 +15,23 @@
     <a class="btn" href="gallery.html">← Galerie</a>
   </header>
   <main class="wrap settings">
-    <h1>Serveur de partage</h1>
+    <h1>Réglages</h1>
+
+    <h2>Dossier de sauvegarde</h2>
+    <p class="muted">Où LocalShot enregistre vos captures et vidéos sur l'ordinateur (bouton « Télécharger », « Tout télécharger »
+      et sauvegarde automatique). Une copie sur le disque les protège aussi si l'extension est désinstallée.</p>
+    <div class="choices">
+      <label class="choice"><input type="radio" name="saveMode" value="downloads">
+        <span><b>Dans Téléchargements</b>, sous-dossier&nbsp;:
+          <input id="sub" class="inline" placeholder="LocalShot" autocomplete="off" spellcheck="false"></span></label>
+      <label class="choice"><input type="radio" name="saveMode" value="folder">
+        <span><b>Dans un dossier de mon choix</b> <span id="folderName" class="muted"></span>
+          <button id="pick" class="btn" type="button">Choisir un dossier…</button></span></label>
+    </div>
+    <label class="check"><input id="auto" type="checkbox"> Enregistrer automatiquement chaque nouvelle capture et vidéo dans ce dossier</label>
+    <p id="saveStatus" class="hint"></p>
+
+    <h2>Serveur de partage</h2>
     <p class="muted">Le serveur reçoit <b>uniquement</b> les captures que vous partagez. Par défaut, c'est le petit serveur de ce Mac.
       Vous pouvez indiquer votre Raspberry Pi (adresse Tailscale, par exemple <code>https://pi.tailnet-1234.ts.net</code>).</p>
 

@@ -42,3 +42,10 @@ kbd { font: 500 10px ui-monospace, Menlo, monospace; color: #64748b; }
 footer { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; margin-top: 8px; border-top: 1px solid #f1f5f9; }
 .link { border: 0; background: none; color: #ea580c; font: inherit; font-weight: 600; cursor: pointer; padding: 0; }
 .link.muted { color: #64748b; }
+
+/* Filtre Tout / Photos / Vidéos */
+.seg { display: flex; margin-bottom: 8px; padding: 3px; gap: 2px; border-radius: 10px; background: #eef0f3; }
+.seg button { border: 0; background: none; padding: 6px 12px; border-radius: 8px; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted, #64748b); cursor: pointer; }
+.seg button:hover { color: var(--text, #0f172a); }
+.seg button[aria-pressed="true"] { background: #fff; color: var(--accent-d, #ea580c); box-shadow: 0 1px 3px rgba(15,23,42,.12); }
+.seg button { flex: 1; }

@@ -1,12 +1,12 @@
 'use strict';
-// Le lecteur vidéo existe en deux copies (extension et serveur) : elles doivent rester identiques.
+// Fichiers partagés en deux copies (extension et serveur) : elles doivent rester identiques.
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.join(__dirname, '..', '..');
-for (const f of ['player.js', 'player.css']) {
+for (const f of ['player.js', 'player.css', 'linkopts.js']) {
   test(`${f} identique dans l'extension et le serveur`, () => {
     assert.strictEqual(
       fs.readFileSync(path.join(root, 'server/public', f), 'utf8'),

@@ -38,13 +38,18 @@
     <h2>Récentes</h2>
     <span id="count" class="muted"></span>
   </div>
+  <div id="kind" class="seg" role="group" aria-label="Filtrer">
+    <button type="button" data-kind="" aria-pressed="true">Tout</button>
+    <button type="button" data-kind="image" aria-pressed="false">Photos</button>
+    <button type="button" data-kind="video" aria-pressed="false">Vidéos</button>
+  </div>
   <input id="q" class="search" type="search" placeholder="Rechercher…" autocomplete="off">
   <main id="list" class="list"></main>
   <p id="empty" class="empty" hidden>Aucune capture pour l'instant.</p>
 
   <footer>
     <button id="gallery" class="link">Galerie complète →</button>
-    <button id="settings" class="link muted">Serveur</button>
+    <button id="settings" class="link muted">Réglages</button>
   </footer>
   <script type="module" src="sidepanel.js"></script>
 </body>

@@ -42,7 +42,7 @@ function card(c) {
 
 function render() {
   const s = q.value.trim().toLowerCase();
-  const list = items.filter((c) => !s || c.title.toLowerCase().includes(s) || (c.sourceUrl || '').toLowerCase().includes(s));
+  const list = items.filter((c) => !s || c.title.toLowerCase().includes(s) || (c.sourceUrl || '').toLowerCase().includes(s)).filter(kindOk);
   grid.replaceChildren(...list.map(card));
   document.getElementById('count').textContent = `${items.length} élément${items.length > 1 ? 's' : ''}`;
   document.getElementById('empty').hidden = items.length > 0;
@@ -55,11 +55,25 @@ async function showStorage() {
 
 document.getElementById('exportAll').addEventListener('click', async () => {
   if (!items.length) return toast('Rien à télécharger');
-  if (!confirm(`Télécharger les ${items.length} éléments dans Téléchargements/LocalShot ?`)) return;
-  for (const c of items) await download(c);
-  toast('Téléchargement lancé');
+  if (!confirm(`Enregistrer les ${items.length} éléments sur l'ordinateur (dossier de sauvegarde choisi dans « Réglages ») ?`)) return;
+  let res;
+  for (const c of items) if ((res = await download(c)).needsAccess) return toast('Accès au dossier refusé', 'error');
+  toast(`Enregistré dans ${res.where}`);
 });
 
+// Filtre Tout / Photos / Vidéos (mémorisé)
+let kind = localStorage.getItem('localshot-kind') || '';
+const kindOk = (c) => !kind || (kind === 'video') === (c.kind === 'video');
+function syncKind() { for (const b of document.querySelectorAll('#kind [data-kind]')) b.setAttribute('aria-pressed', String(b.dataset.kind === kind)); }
+document.getElementById('kind').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-kind]');
+  if (!b) return;
+  kind = b.dataset.kind;
+  localStorage.setItem('localshot-kind', kind);
+  syncKind();
+  render();
+});
+syncKind();
 q.addEventListener('input', render);
 items = await listCaptures();
 render();

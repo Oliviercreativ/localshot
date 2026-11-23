@@ -49,7 +49,16 @@ const KINDS = {
 const MIME_OF = { png: 'image/png', mp4: 'video/mp4', webm: 'video/webm' };
 const ID_RE = '([A-Za-z0-9_-]{6,32})';
 
+const THUMBS_DIR = path.join(DATA_DIR, 'thumbs');
 fs.mkdirSync(CAPS_DIR, { recursive: true });
+fs.mkdirSync(THUMBS_DIR, { recursive: true });
+// Vignettes (aperçu des liens dans Slack, WhatsApp, e-mail…) : toujours sur le disque du serveur.
+const THUMB_KINDS = {
+  'image/webp': { ext: 'webp', ok: (b) => b.length >= 12 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP' },
+  'image/jpeg': { ext: 'jpg', ok: (b) => b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff },
+  'image/png': { ext: 'png', ok: (b) => b.length >= 8 && b.subarray(0, 8).equals(PNG_SIG) },
+};
+const THUMB_MIME = { webp: 'image/webp', jpg: 'image/jpeg', png: 'image/png' };
 let storage;
 try { storage = createStorage({ env: process.env, capsDir: CAPS_DIR }); }
 catch (e) { console.error(`✖ ${e.message}`); process.exit(1); }
@@ -68,6 +77,44 @@ function persist() {
 }
 
 const find = (id) => captures.find((c) => c.id === id);
+
+// ---------- Contrôle des liens de partage (expiration, mot de passe, téléchargement, vues) ----------
+// Secret du serveur (créé au premier lancement) : signe les cookies « lien déverrouillé ».
+const SECRET_FILE = path.join(DATA_DIR, 'secret');
+let SECRET;
+try { SECRET = fs.readFileSync(SECRET_FILE); }
+catch { SECRET = crypto.randomBytes(32); fs.writeFileSync(SECRET_FILE, SECRET, { mode: 0o600 }); }
+
+const expired = (c) => !!c.expiresAt && Date.parse(c.expiresAt) <= Date.now();
+const hashPassword = (pw) => {
+  const salt = crypto.randomBytes(16);
+  return `${salt.toString('hex')}:${crypto.scryptSync(pw, salt, 32).toString('hex')}`;
+};
+function checkPassword(pw, stored) {
+  const [salt, hash] = String(stored).split(':');
+  if (!salt || !hash) return false;
+  return sameSecret(crypto.scryptSync(String(pw), Buffer.from(salt, 'hex'), 32), Buffer.from(hash, 'hex'));
+}
+// Le jeton dépend du mot de passe : le changer ou le retirer invalide les accès déjà donnés.
+const unlockToken = (c) => crypto.createHmac('sha256', SECRET).update(`${c.id}:${c.password}`).digest('base64url');
+const unlockCookie = (c) => `ls_u_${c.id}`;
+const unlocked = (req, c) => {
+  if (!c.password) return true;
+  const v = cookies(req)[unlockCookie(c)];
+  return !!v && sameSecret(Buffer.from(v), Buffer.from(unlockToken(c)));
+};
+// Ce que voit le propriétaire : tout, sauf l'empreinte du mot de passe.
+function adminView(c) {
+  const { password, ...rest } = c;
+  return { ...rest, hasPassword: !!password, allowDownload: c.allowDownload !== false, views: c.views || 0, canEdit: true };
+}
+// Les vues sont enregistrées par paquets pour ne pas réécrire l'index à chaque visite.
+let viewsTimer;
+function countView(c) {
+  c.views = (c.views || 0) + 1;
+  clearTimeout(viewsTimer);
+  viewsTimer = setTimeout(persist, 2000);
+}
 
 // ---------- Sécurité ----------
 function lanAddresses() {
@@ -266,9 +313,9 @@ async function upload(req, res) {
 
 // Ce que voit un visiteur anonyme d'un lien de partage : pas de chemin local (file://) ni de détails internes.
 function publicView(c) {
-  const { id, kind, ext, title, width, height, duration, size, createdAt } = c;
+  const { id, kind, ext, title, width, height, duration, size, createdAt, thumb } = c;
   const sourceUrl = /^https?:\/\//i.test(c.sourceUrl || '') ? c.sourceUrl : '';
-  return { id, kind, ext, title, width, height, duration, size, createdAt, sourceUrl, canEdit: false };
+  return { id, kind, ext, title, width, height, duration, size, createdAt, thumb, sourceUrl, allowDownload: c.allowDownload !== false, canEdit: false };
 }
 
 function serveFile(req, res, c, download) {
@@ -281,6 +328,31 @@ function serveFile(req, res, c, download) {
     filename = `attachment; filename="${ascii}.${ext}"; filename*=UTF-8''${encodeURIComponent(c.title.slice(0, 80))}.${ext}`;
   }
   driver.serve(req, res, c, { headers: SEC_HEADERS, mime: MIME_OF[ext], filename });
+}
+
+// Page d'une capture, avec les balises Open Graph pour l'aperçu du lien (titre, vignette).
+// Rien n'est révélé pour un lien protégé par mot de passe.
+const esc = (v) => String(v).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+async function viewerPage(res, c) {
+  let html;
+  try { html = await fsp.readFile(path.join(PUBLIC, 'viewer.html'), 'utf8'); } catch { return send(res, 404, 'Introuvable'); }
+  if (!c.password) {
+    const video = c.kind === 'video';
+    const desc = video ? `Vidéo de ${Math.floor((c.duration || 0) / 60)} min ${String(Math.round(c.duration || 0) % 60).padStart(2, '0')} s` : 'Capture d\'écran';
+    const tags = [
+      `<meta property="og:title" content="${esc(c.title)}">`,
+      `<meta property="og:description" content="${esc(desc)} · LocalShot">`,
+      `<meta property="og:type" content="${video ? 'video.other' : 'website'}">`,
+      '<meta property="og:site_name" content="LocalShot">',
+    ];
+    const img = c.thumb ? `/t/${c.id}.${c.thumb}` : !video ? `/i/${c.id}.png` : null;
+    if (img && PUBLIC_URL) {
+      tags.push(`<meta property="og:image" content="${esc(PUBLIC_URL + img)}">`, '<meta name="twitter:card" content="summary_large_image">');
+      tags.push(`<meta property="og:url" content="${esc(`${PUBLIC_URL}/c/${c.id}`)}">`);
+    }
+    html = html.replace(/<title>[^<]*<\/title>/, `<title>${esc(c.title)} — LocalShot</title>\n  ${tags.join('\n  ')}`);
+  }
+  send(res, 200, html, 'text/html; charset=utf-8', { 'Cache-Control': 'no-cache' });
 }
 
 // ---------- Routeur ----------
@@ -313,11 +385,26 @@ const server = http.createServer(async (req, res) => {
       return send(res, 204, '', 'text/plain', { 'Set-Cookie': `${COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secureCookie()}` });
     }
     if (method === 'GET' && (m = p.match(new RegExp(`^/c/${ID_RE}$`)))) {
-      return find(m[1]) ? file(res, 'viewer.html') : file(res, 'notfound.html', 404);
+      const c = find(m[1]);
+      if (!c) return file(res, 'notfound.html', 404);
+      if (expired(c) && !local) return file(res, 'expired.html', 410);
+      return viewerPage(res, c);
     }
     if (['GET', 'HEAD'].includes(method) && (m = p.match(new RegExp(`^/i/${ID_RE}\\.(png|mp4|webm)$`)))) {
       const c = find(m[1]);
-      return c && (c.ext || 'png') === m[2] ? serveFile(req, res, c, url.searchParams.has('dl')) : send(res, 404, 'Introuvable');
+      if (!c || (c.ext || 'png') !== m[2] || (!local && expired(c))) return send(res, 404, 'Introuvable');
+      if (!local && !unlocked(req, c)) return send(res, 401, 'Mot de passe requis');
+      const dl = url.searchParams.has('dl');
+      if (dl && !local && c.allowDownload === false) return send(res, 403, 'Téléchargement désactivé');
+      return serveFile(req, res, c, dl);
+    }
+    if (['GET', 'HEAD'].includes(method) && (m = p.match(new RegExp(`^/t/${ID_RE}\\.(webp|jpg|png)$`)))) {
+      const c = find(m[1]);
+      if (!c || c.thumb !== m[2] || (!local && (expired(c) || !unlocked(req, c)))) return send(res, 404, 'Introuvable');
+      try {
+        const buf = await fsp.readFile(path.join(THUMBS_DIR, `${c.id}.${c.thumb}`));
+        return send(res, 200, method === 'HEAD' ? '' : buf, THUMB_MIME[c.thumb], { 'Cache-Control': 'private, max-age=300', 'Cross-Origin-Resource-Policy': 'cross-origin' });
+      } catch { return send(res, 404, 'Introuvable'); }
     }
     if (method === 'GET' && (m = p.match(/^\/assets\/([\w.-]+)$/))) return file(res, m[1]);
 
@@ -327,25 +414,71 @@ const server = http.createServer(async (req, res) => {
 
     if (p === '/api/captures') {
       if (!local) return json(res, TOKEN ? 401 : 403, { error: TOKEN ? 'Clé d\'accès requise' : 'Réservé à cette machine' });
-      if (method === 'GET') return json(res, 200, [...captures].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+      if (method === 'GET') return json(res, 200, [...captures].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map(adminView));
       if (method === 'POST') return await upload(req, res);
       return json(res, 405, { error: 'Méthode non autorisée' });
+    }
+
+    if (method === 'POST' && (m = p.match(new RegExp(`^/api/captures/${ID_RE}/unlock$`)))) {
+      const c = find(m[1]);
+      if (!c || expired(c)) return json(res, 404, { error: 'Introuvable' });
+      if (!c.password) return json(res, 204);
+      let body = {};
+      try { body = JSON.parse((await readBody(req, 2000)).toString('utf8') || '{}'); } catch { return json(res, 400, { error: 'JSON invalide' }); }
+      if (typeof body.password !== 'string' || !checkPassword(body.password, c.password)) {
+        await new Promise((r) => setTimeout(r, 800)); // ralentit les essais au hasard
+        return json(res, 401, { error: 'Mot de passe incorrect' });
+      }
+      return send(res, 204, '', 'text/plain', { 'Set-Cookie': `${unlockCookie(c)}=${unlockToken(c)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${7 * 24 * 3600}${secureCookie()}` });
+    }
+
+    if (method === 'PUT' && (m = p.match(new RegExp(`^/api/captures/${ID_RE}/thumb$`)))) {
+      if (!local) return json(res, TOKEN ? 401 : 403, { error: TOKEN ? 'Clé d\'accès requise' : 'Réservé à cette machine' });
+      const c = find(m[1]);
+      if (!c) return json(res, 404, { error: 'Introuvable' });
+      const k = THUMB_KINDS[String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase()];
+      if (!k) return json(res, 415, { error: 'Vignette : webp, jpeg ou png' });
+      const buf = await readBody(req, 2 * MB);
+      if (!k.ok(buf)) return json(res, 400, { error: 'Vignette invalide' });
+      if (c.thumb && c.thumb !== k.ext) await fsp.rm(path.join(THUMBS_DIR, `${c.id}.${c.thumb}`), { force: true });
+      await fsp.writeFile(path.join(THUMBS_DIR, `${c.id}.${k.ext}`), buf);
+      c.thumb = k.ext;
+      await persist();
+      return json(res, 204);
     }
 
     if ((m = p.match(new RegExp(`^/api/captures/${ID_RE}$`)))) {
       const c = find(m[1]);
       if (!c) return json(res, 404, { error: 'Introuvable' });
-      if (method === 'GET') return json(res, 200, local ? { ...c, canEdit: true } : publicView(c));
+      if (method === 'GET') {
+        if (local) return json(res, 200, adminView(c));
+        if (expired(c)) return json(res, 404, { error: 'Lien expiré' });
+        if (!unlocked(req, c)) return json(res, 200, { id: c.id, kind: c.kind, locked: true });
+        if (url.searchParams.has('view')) countView(c); // une vue = une ouverture de la page
+        return json(res, 200, publicView(c));
+      }
       if (!local) return json(res, TOKEN ? 401 : 403, { error: TOKEN ? 'Clé d\'accès requise' : 'Réservé à cette machine' });
       if (method === 'PATCH') {
         let body = {};
         try { body = JSON.parse((await readBody(req, 10_000)).toString('utf8') || '{}'); } catch { return json(res, 400, { error: 'JSON invalide' }); }
         if (typeof body.title === 'string') c.title = body.title.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 300) || 'Capture sans titre';
+        if ('expiresAt' in body) {
+          if (body.expiresAt === null) delete c.expiresAt;
+          else if (typeof body.expiresAt === 'string' && Number.isFinite(Date.parse(body.expiresAt))) c.expiresAt = new Date(body.expiresAt).toISOString();
+          else return json(res, 400, { error: 'Date d\'expiration invalide' });
+        }
+        if (typeof body.allowDownload === 'boolean') c.allowDownload = body.allowDownload;
+        if ('password' in body) {
+          if (body.password === null || body.password === '') delete c.password;
+          else if (typeof body.password === 'string' && body.password.length <= 200) c.password = hashPassword(body.password);
+          else return json(res, 400, { error: 'Mot de passe invalide' });
+        }
         await persist();
-        return json(res, 200, c);
+        return json(res, 200, adminView(c));
       }
       if (method === 'DELETE') {
         await storage.of(c)?.remove(c);
+        if (c.thumb) await fsp.rm(path.join(THUMBS_DIR, `${c.id}.${c.thumb}`), { force: true });
         captures = captures.filter((x) => x.id !== c.id);
         await persist();
         return json(res, 204);

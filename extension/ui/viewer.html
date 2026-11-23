@@ -22,6 +22,10 @@
     </div>
   </header>
   <main class="viewer">
+    <div id="saveBanner" class="notice save-banner" hidden>
+      <span id="saveBannerText"></span>
+      <button id="saveBannerBtn" class="btn primary">Autoriser et enregistrer</button>
+    </div>
     <div id="stage" class="stage"><img id="img" alt="Capture d'écran"></div>
     <section class="details">
       <input id="title" class="title-input" maxlength="300" aria-label="Titre de la capture">
@@ -38,6 +42,7 @@
         </div>
       </div>
       <p id="shareHint" class="hint"></p>
+      <div id="linkOpts" class="link-opts" hidden></div>
     </section>
   </main>
   <div id="toast" class="toast" hidden></div>

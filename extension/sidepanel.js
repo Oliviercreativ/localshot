@@ -86,7 +86,7 @@ function render() {
   urls.forEach(URL.revokeObjectURL);
   urls = [];
   const s = q.value.trim().toLowerCase();
-  const shown = items.filter((c) => !s || c.title.toLowerCase().includes(s) || (c.sourceUrl || '').toLowerCase().includes(s));
+  const shown = items.filter((c) => !s || c.title.toLowerCase().includes(s) || (c.sourceUrl || '').toLowerCase().includes(s)).filter(kindOk);
   list.replaceChildren(...shown.map(row));
   $('count').textContent = `${items.length} élément${items.length > 1 ? 's' : ''}`;
   $('empty').hidden = items.length > 0;
@@ -97,6 +97,19 @@ async function load() {
   render();
 }
 
+// Filtre Tout / Photos / Vidéos (mémorisé)
+let kind = localStorage.getItem('localshot-kind') || '';
+const kindOk = (c) => !kind || (kind === 'video') === (c.kind === 'video');
+function syncKind() { for (const b of document.querySelectorAll('#kind [data-kind]')) b.setAttribute('aria-pressed', String(b.dataset.kind === kind)); }
+document.getElementById('kind').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-kind]');
+  if (!b) return;
+  kind = b.dataset.kind;
+  localStorage.setItem('localshot-kind', kind);
+  syncKind();
+  render();
+});
+syncKind();
 q.addEventListener('input', render);
 new BroadcastChannel(CHANGES).onmessage = load; // nouvelle capture, titre modifié, suppression…
 $('gallery').addEventListener('click', () => page('ui/gallery.html'));

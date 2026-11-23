@@ -1,21 +1,43 @@
 import { createPlayer } from '/assets/player.js';
-import { fmtDate, fmtSize, fmtDuration, isVideo, fileUrl, toast, copyText } from '/assets/common.js';
+import { h, fmtDate, fmtSize, fmtDuration, isVideo, fileUrl, thumbUrl, toast, copyText } from '/assets/common.js';
+import { linkOptions } from '/assets/linkopts.js';
 
 const $ = (id) => document.getElementById(id);
 const id = location.pathname.split('/').pop();
 
 const [c, health] = await Promise.all([
-  fetch(`/api/captures/${id}`).then((r) => (r.ok ? r.json() : null)),
+  fetch(`/api/captures/${id}?view=1`).then((r) => (r.ok ? r.json() : null)),
   fetch('/api/health').then((r) => r.json()),
 ]);
 
 if (!c) {
   location.replace('/c/introuvable');
+} else if (c.locked) {
+  // Lien protégé : on demande le mot de passe avant d'afficher quoi que ce soit.
+  document.title = 'Lien protégé — LocalShot';
+  document.querySelector('.actions').hidden = true;
+  const form = h('form', {}, h('input', { type: 'password', id: 'pw', placeholder: 'Mot de passe', autocomplete: 'current-password', required: '', 'aria-label': 'Mot de passe' }),
+    h('button', { class: 'btn primary', type: 'submit' }, 'Ouvrir'));
+  const msg = h('p', { class: 'muted' }, `Cette ${c.kind === 'video' ? 'vidéo' : 'capture'} est protégée par un mot de passe.`);
+  document.querySelector('main').replaceChildren(h('div', { class: 'unlock' }, h('img', { src: '/assets/icon.png', alt: '', width: '56', height: '56' }),
+    h('h1', {}, 'Lien protégé'), msg, form));
+  $('pw').focus();
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = form.querySelector('button');
+    btn.disabled = true;
+    const r = await fetch(`/api/captures/${id}/unlock`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: $('pw').value }) });
+    btn.disabled = false;
+    if (r.ok) return location.reload();
+    msg.textContent = 'Mot de passe incorrect.';
+    msg.className = 'notice bad';
+    $('pw').select();
+  });
 } else {
   document.title = `${c.title} — LocalShot`;
   const img = $('img');
   if (isVideo(c)) {
-    const player = createPlayer({ src: fileUrl(c), duration: c.duration });
+    const player = createPlayer({ src: fileUrl(c), poster: thumbUrl(c) || undefined, duration: c.duration, noDownload: !c.canEdit && c.allowDownload === false });
     img.replaceWith(player);
     player.focus({ preventScroll: true });
   } else {
@@ -75,6 +97,9 @@ if (!c) {
   } else copyImg.hidden = true;
 
   $('download').href = `${fileUrl(c)}?dl=1`;
+  if (!c.canEdit && c.allowDownload === false) { $('download').hidden = true; copyImg.hidden = true; }
+  if (!c.canEdit) document.querySelector('.share').hidden = true; // le visiteur a déjà le lien : « Copier le lien » suffit
+  if (c.canEdit) linkOptions($('linkOpts'), c, { request: (u, o) => fetch(u, o), notify: toast });
 
   $('del').addEventListener('click', async () => {
     if (!confirm(`Supprimer ${isVideo(c) ? 'cette vidéo' : 'cette capture'} ? Cette action est définitive.`)) return;

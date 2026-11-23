@@ -36,3 +36,4 @@ export async function copyText(text, input) {
 export const isVideo = (c) => c.kind === 'video';
 export const fileUrl = (c) => `/i/${c.id}.${c.ext || 'png'}`;
 export const fmtDuration = (sec) => { const s = Math.round(sec || 0); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+export const thumbUrl = (c) => (c.thumb ? `/t/${c.id}.${c.thumb}` : null);

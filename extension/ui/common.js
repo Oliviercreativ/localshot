@@ -1,3 +1,4 @@
+import { saveToComputer } from './savefolder.js';
 // Serveur de partage : par défaut le serveur local du Mac ; réglable (ex. Raspberry Pi via Tailscale).
 export const DEFAULT_SERVER = 'http://localhost:4777';
 const CONF_KEY = 'server-conf';
@@ -45,16 +46,9 @@ export const isVideo = (c) => c.kind === 'video';
 export const extOf = (c) => (!isVideo(c) ? 'png' : c.mime === 'video/mp4' ? 'mp4' : 'webm');
 export const fmtDuration = (sec) => { const s = Math.round(sec || 0); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 
-export function fileName(c) {
-  const base = c.title.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80) || 'capture';
-  return `LocalShot/${base} — ${c.createdAt.slice(0, 19).replace(/[T:]/g, '-')}.${extOf(c)}`;
-}
-
-export async function download(c) {
-  const url = URL.createObjectURL(c.blob);
-  await chrome.downloads.download({ url, filename: fileName(c), conflictAction: 'uniquify' });
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
-}
+// Enregistre sur l'ordinateur selon le réglage « Dossier de sauvegarde » (dans un clic).
+// Renvoie { where } ou { needsAccess } (accès au dossier refusé).
+export const download = (c) => saveToComputer(c, { interactive: true });
 
 let t;
 export function toast(msg, kind = '') {

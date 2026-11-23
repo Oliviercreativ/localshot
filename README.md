@@ -51,7 +51,14 @@ The video then opens in its own page and shows up in the gallery. MP4 when Chrom
 - The video is kept in memory while recording: about 30 MB per minute.
 
 ⚠️ Captures are stored in the browser (the extension's IndexedDB): **uninstalling the extension
-deletes them**. The gallery's « Tout télécharger » (Download all) button copies everything to `Downloads/LocalShot/`.
+deletes them**. Keep a copy on disk:
+
+- **Save folder** (« Réglages », Settings): a subfolder of Downloads, or **any folder you pick** on your computer.
+  « Télécharger » and « Tout télécharger » (Download all) save there.
+- **Auto-save** (optional): every new capture and video is also written to that folder as soon as it is taken.
+  With a custom folder, Chrome may ask you to allow access again after a restart (one click on the capture page).
+
+The gallery and the side panel can be filtered by **All / Photos / Videos**.
 
 ## Sharing over Wi-Fi (optional)
 
@@ -64,6 +71,18 @@ npm run start:lan
 Then, on a capture or video page: **« Partager »** (Share) → the link is copied. Only that capture is
 copied to the local server (`data/` folder); « Arrêter le partage » (Stop sharing) removes it. Node ≥ 18, no dependencies (≥ 20.6 for `npm run start:env`).
 `npm start` runs the server without exposing it to the network (useful for testing).
+
+### Link options
+
+Once a capture is shared, its page (in the extension or in the server's web gallery) shows **link options**:
+
+- **Views**: how many times the link was opened (counted on your server, no third-party analytics; your own visits are not counted).
+- **Expiry**: never, 24 hours, 7 days or 30 days. Expired links show "This link has expired".
+- **Password**: visitors must enter it before seeing anything (title included). Changing or removing it revokes access already given.
+  Send the password separately from the link.
+- **Allow download**: untick to hide the download button for visitors. This only discourages: anything shown on screen can still be recorded.
+- **Link preview**: when the server has a public address (`LOCALSHOT_PUBLIC_URL`), links pasted in Slack, WhatsApp or an email
+  show the title and a thumbnail. Nothing is revealed for password-protected links.
 
 ## Where shared files are stored
 
@@ -100,7 +119,7 @@ To reach your shares from your iPhone or another computer, even away from home, 
    (add a 2nd argument to store data elsewhere, e.g. `/mnt/ssd/localshot`).
    The script installs the `localshot` service (systemd, hardened), enables `tailscale serve` (private HTTPS)
    and automatic security updates, and prints an **access key**.
-3. In the extension: gallery → **« Serveur »** (Server) → address `https://<pi-name>.<tailnet>.ts.net` + the key.
+3. In the extension: gallery → **« Réglages »** (Settings) → address `https://<pi-name>.<tailnet>.ts.net` + the key.
    Chrome asks for access to that single address only.
 4. On the iPhone, open the same address in Safari and enter the key: the gallery appears.
 

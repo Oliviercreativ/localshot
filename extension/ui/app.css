@@ -100,3 +100,33 @@ kbd { display: inline-block; min-width: 22px; text-align: center; padding: 2px 6
 .settings input { padding: 11px 13px; border: 1px solid var(--line); border-radius: 10px; font: inherit; background: #fff; }
 .settings .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .notice.bad { background: #fef2f2; color: var(--danger); border-color: #fecaca; }
+
+/* Filtre Tout / Photos / Vidéos */
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 10px; background: #eef0f3; }
+.seg button { border: 0; background: none; padding: 6px 12px; border-radius: 8px; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted, #64748b); cursor: pointer; }
+.seg button:hover { color: var(--text, #0f172a); }
+.seg button[aria-pressed="true"] { background: #fff; color: var(--accent-d, #ea580c); box-shadow: 0 1px 3px rgba(15,23,42,.12); }
+.head .seg { margin-left: auto; align-self: center; }
+.save-banner { display: flex; align-items: center; gap: 12px; justify-content: space-between; }
+.settings h2 { margin: 32px 0 6px; font-size: 18px; }
+.choices { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 10px; }
+.choice { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; cursor: pointer; font-weight: 400; }
+.choice:has(input:checked) { border-color: var(--accent); background: #fff7ed; }
+.choice > span { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.settings .choice input.inline { padding: 6px 10px; width: 200px; }
+.check { display: flex; align-items: center; gap: 8px; font-weight: 400; cursor: pointer; }
+
+/* Options d'un lien de partage */
+.link-opts { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: #fff; display: flex; flex-direction: column; gap: 10px; }
+.lo-head { display: flex; justify-content: space-between; align-items: baseline; font-weight: 600; }
+.lo-views { color: var(--muted); font-weight: 400; }
+.lo-views b { color: var(--accent-d); font-size: 18px; }
+.lo-field { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-weight: 400; }
+.lo-field > span:first-child { width: 110px; color: var(--muted); font-size: 13px; }
+.lo-field select, .lo-field input { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 13px; background: #fff; min-width: 180px; }
+.lo-on { font-weight: 600; font-size: 13px; }
+.lo-check { display: flex; align-items: center; gap: 8px; font-weight: 400; font-size: 14px; cursor: pointer; }
+/* Lien protégé par mot de passe (visiteur) */
+.unlock { max-width: 380px; margin: 60px auto; text-align: center; }
+.unlock form { display: flex; gap: 8px; margin-top: 16px; }
+.unlock input { flex: 1; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font: inherit; }

@@ -14,13 +14,18 @@
     <span id="storage" class="storage"></span>
     <div class="spacer"></div>
     <input id="q" class="search" type="search" placeholder="Rechercher…" autocomplete="off">
-    <a class="btn" href="settings.html">Serveur</a>
+    <a class="btn" href="settings.html">Réglages</a>
     <button id="exportAll" class="btn">Tout télécharger</button>
   </header>
   <main class="wrap">
     <div class="head">
       <h1>Mes captures</h1>
       <span id="count" class="muted"></span>
+      <div id="kind" class="seg" role="group" aria-label="Filtrer">
+        <button type="button" data-kind="" aria-pressed="true">Tout</button>
+        <button type="button" data-kind="image" aria-pressed="false">Photos</button>
+        <button type="button" data-kind="video" aria-pressed="false">Vidéos</button>
+      </div>
     </div>
     <div class="notice subtle">Les captures et vidéos sont stockées dans Chrome, sur ce Mac uniquement. Attention : désinstaller l'extension les efface. Pensez à « Tout télécharger » avant.</div>
     <div id="grid" class="grid"></div>
