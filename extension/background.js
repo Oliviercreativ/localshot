@@ -3,8 +3,11 @@ import { addCapture, newId } from './db.js';
 import { openRecorder, toggleRecorder } from './recorder-launch.js';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-chrome.runtime.onMessage.addListener((msg, sender) => {
-  if (msg?.type === 'capture') startCapture(msg.mode, msg.tabId);
+chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+  if (msg?.type === 'capture') {
+    const p = startCapture(msg.mode, msg.tabId);
+    if (msg.reply) { p.then((error) => reply({ error })); return true; } // le panneau latéral attend le résultat
+  }
   if (msg?.type === 'area-selected' && sender.tab) finishArea(sender.tab, msg.rect, msg.viewportWidth);
   if (msg?.type === 'open-recorder') openRecorder().catch((e) => console.error('LocalShot vidéo :', e));
 });
@@ -25,6 +28,7 @@ async function startCapture(mode, tabId) {
   } catch (e) {
     console.error('LocalShot:', e);
     flash('!', '#dc2626', tabId);
+    return e.message || String(e);
   }
 }
 

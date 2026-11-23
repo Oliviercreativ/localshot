@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LocalShot</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <header>
+    <img src="icons/icon-32.png" alt="" width="24" height="24">
+    <strong>LocalShot</strong>
+    <span class="pill">100&nbsp;% local</span>
+  </header>
+
+  <div class="tiles">
+    <button data-mode="visible" title="Partie visible (⌥⇧V)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18"/></svg>
+      <span>Partie visible</span>
+    </button>
+    <button data-mode="full" title="Page entière (⌥⇧F)">
+      <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg>
+      <span>Page entière</span>
+    </button>
+    <button data-mode="area" title="Zone sélectionnée (⌥⇧S)">
+      <svg viewBox="0 0 24 24"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg>
+      <span>Zone</span>
+    </button>
+  </div>
+
+  <button id="record" class="record">
+    <i class="dot"></i><span id="recLabel">Enregistrer une vidéo</span><kbd>⌥⇧R</kbd>
+  </button>
+
+  <div id="error" class="error" hidden></div>
+
+  <div class="list-head">
+    <h2>Récentes</h2>
+    <span id="count" class="muted"></span>
+  </div>
+  <input id="q" class="search" type="search" placeholder="Rechercher…" autocomplete="off">
+  <main id="list" class="list"></main>
+  <p id="empty" class="empty" hidden>Aucune capture pour l'instant.</p>
+
+  <footer>
+    <button id="gallery" class="link">Galerie complète →</button>
+    <button id="settings" class="link muted">Serveur</button>
+  </footer>
+  <script type="module" src="sidepanel.js"></script>
+</body>
+</html>

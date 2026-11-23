@@ -25,9 +25,13 @@ export function newId() {
   return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_');
 }
 
-export const addCapture = async (rec) => req((await store('readwrite')).add(rec));
+// Prévient les autres pages de l'extension (panneau latéral, galerie) qu'une capture a changé.
+export const CHANGES = 'localshot-changes';
+const changed = (id) => { try { const bc = new BroadcastChannel(CHANGES); bc.postMessage({ id }); bc.close(); } catch { /* ignoré */ } };
+
+export async function addCapture(rec) { const r = await req((await store('readwrite')).add(rec)); changed(rec.id); return r; }
 export const getCapture = async (id) => req((await store('readonly')).get(id));
-export const deleteCapture = async (id) => req((await store('readwrite')).delete(id));
+export async function deleteCapture(id) { await req((await store('readwrite')).delete(id)); changed(id); }
 export async function listCaptures() {
   const all = await req((await store('readonly')).getAll());
   return all.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -38,5 +42,6 @@ export async function updateCapture(id, patch) {
   if (!rec) throw new Error('Capture introuvable');
   Object.assign(rec, patch);
   await req(s.put(rec));
+  changed(id);
   return rec;
 }

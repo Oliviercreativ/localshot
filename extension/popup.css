@@ -1,10 +1,10 @@
 * { box-sizing: border-box; }
-body { width: 340px; margin: 0; padding: 14px; font: 13px/1.4 -apple-system, BlinkMacSystemFont, system-ui, sans-serif; color: #0f172a; background: #fff; }
+body { width: 420px; margin: 0; padding: 16px; font: 14px/1.4 -apple-system, BlinkMacSystemFont, system-ui, sans-serif; color: #0f172a; background: #fff; }
 header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 15px; }
 .pill { margin-left: auto; font-size: 11px; font-weight: 600; color: #15803d; background: #dcfce7; padding: 3px 8px; border-radius: 999px; }
 .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.tiles button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 6px 10px; border: 1px solid #e5e7eb; border-radius: 12px;
-  background: #f8fafc; cursor: pointer; font: inherit; font-weight: 600; font-size: 12px; color: #0f172a; transition: all .12s; }
+.tiles button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 6px 12px; border: 1px solid #e5e7eb; border-radius: 12px;
+  background: #f8fafc; cursor: pointer; font: inherit; font-weight: 600; font-size: 13px; color: #0f172a; transition: all .12s; white-space: nowrap; }
 .tiles button:hover { border-color: #f97316; background: #fff7ed; }
 .tiles svg { width: 34px; height: 34px; fill: none; stroke: #f97316; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 kbd { font: 500 10px ui-monospace, Menlo, monospace; color: #64748b; }
@@ -22,3 +22,8 @@ footer { display: flex; align-items: center; justify-content: space-between; mar
 .record .dot { width: 12px; height: 12px; border-radius: 50%; background: #dc2626; box-shadow: 0 0 0 3px #fee2e2; }
 .record.live { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
 .record.live .dot { border-radius: 2px; }
+.open { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.open button { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; border: 1px solid #e5e7eb; border-radius: 12px;
+  background: #fff; cursor: pointer; font: inherit; font-weight: 600; color: #ea580c; transition: all .12s; }
+.open button:hover { border-color: #f97316; background: #fff7ed; }
+.open svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }

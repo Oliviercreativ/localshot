@@ -1,4 +1,5 @@
 import { getCapture, updateCapture, deleteCapture } from '../db.js';
+import { createPlayer } from './player.js';
 import { fmtDate, fmtSize, fmtDuration, isVideo, toast, download, api, serverConf, revokeShare } from './common.js';
 
 const $ = (id) => document.getElementById(id);
@@ -10,15 +11,9 @@ if (!c) {
   document.querySelector('.actions').hidden = true;
 } else {
   if (isVideo(c)) {
-    const v = Object.assign(document.createElement('video'), { controls: true, playsInline: true, preload: 'metadata', src: URL.createObjectURL(c.blob) });
-    if (c.thumb) v.poster = URL.createObjectURL(c.thumb);
-    // Les WebM de MediaRecorder n'ont pas de durée : on force le calcul pour que la barre de lecture fonctionne.
-    v.addEventListener('loadedmetadata', () => {
-      if (v.duration !== Infinity) return;
-      v.addEventListener('durationchange', () => { v.currentTime = 0; }, { once: true });
-      v.currentTime = 1e101;
-    }, { once: true });
-    $('img').replaceWith(v);
+    const player = createPlayer({ src: URL.createObjectURL(c.blob), poster: c.thumb && URL.createObjectURL(c.thumb), duration: c.duration });
+    $('img').replaceWith(player);
+    player.focus({ preventScroll: true });
     $('copyImg').hidden = true;
   } else {
     const img = $('img');

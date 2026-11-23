@@ -14,6 +14,14 @@ document.getElementById('gallery').addEventListener('click', () => {
   window.close();
 });
 
+// Panneau latéral : Chrome exige que l'ouverture suive directement le clic, d'où l'identifiant de fenêtre lu à l'avance.
+let windowId;
+chrome.windows.getCurrent().then((w) => (windowId = w.id));
+document.getElementById('panel').addEventListener('click', () => {
+  if (!chrome.sidePanel) return alert('Rechargez LocalShot dans chrome://extensions (bouton ↻) pour activer le panneau latéral.');
+  chrome.sidePanel.open({ windowId }).then(() => window.close(), (e) => console.error('LocalShot panneau :', e));
+});
+
 // Vidéo : le bouton est branché tout de suite ; l'état de l'enregistreur est lu en parallèle.
 const recBtn = document.getElementById('record');
 let live = false;

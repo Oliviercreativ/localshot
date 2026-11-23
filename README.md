@@ -24,7 +24,9 @@ After a code update: click the ↻ button on the extension's card in `chrome://e
 | Video: open the recorder / stop recording | `⌥ ⇧ R` |
 
 After a capture, its page opens: editable title, copy image, download, delete.
-The gallery opens from the popup (« Ouvrir la galerie », Open gallery). Shortcuts can be changed in `chrome://extensions/shortcuts`.
+The popup opens the full gallery in a tab (« Ouvrir la galerie », Open gallery) or a **side panel** on the right of the window
+(« Panneau latéral »), like Claude in Chrome: capture buttons, video recording and your recent captures, updated live.
+Shortcuts can be changed in `chrome://extensions/shortcuts`.
 
 ## Video (Loom-style)
 
@@ -109,7 +111,7 @@ Key and settings: `/etc/localshot.env` on the Pi. Logs: `journalctl -u localshot
 
 - Permissions: `activeTab` (only the tab where **you** click / use the shortcut),
   `scripting` (scrolling for full page, selection frame), `downloads` (downloading),
-  `unlimitedStorage` (no storage limit for captures).
+  `unlimitedStorage` (no storage limit for captures), `sidePanel` (the side panel, which shows no warning and grants no access to your pages).
 - Optional permission (only if you tick "Click effect"): access to pages, used only
   during a video recording to draw clicks, and handed back to Chrome as soon as you untick the option.
 - Only allowed network address: `http://localhost:4777` (the sharing server, if running),

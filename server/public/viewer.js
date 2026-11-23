@@ -1,3 +1,4 @@
+import { createPlayer } from '/assets/player.js';
 import { fmtDate, fmtSize, fmtDuration, isVideo, fileUrl, toast, copyText } from '/assets/common.js';
 
 const $ = (id) => document.getElementById(id);
@@ -14,9 +15,9 @@ if (!c) {
   document.title = `${c.title} — LocalShot`;
   const img = $('img');
   if (isVideo(c)) {
-    const v = Object.assign(document.createElement('video'), { controls: true, playsInline: true, preload: 'metadata', src: fileUrl(c) });
-    v.setAttribute('playsinline', '');
-    img.replaceWith(v);
+    const player = createPlayer({ src: fileUrl(c), duration: c.duration });
+    img.replaceWith(player);
+    player.focus({ preventScroll: true });
   } else {
     img.src = fileUrl(c);
     img.addEventListener('click', () => $('stage').classList.toggle('zoomed'));
