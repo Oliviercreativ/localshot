@@ -27,8 +27,8 @@ Points d'attention :
 | Élément | Taille | Statut |
 |---|---|---|
 | Icône | 128×128 | ✓ `extension/icons/icon-128.png` |
-| Captures d'écran (1 à 5) | 1280×800 ou 640×400 | à faire : popup, éditeur (flou + flèches), lecteur vidéo, panneau latéral, page client |
-| Petite vignette promo | 440×280 | à faire |
+| Captures d'écran (1 à 5) | 1280×800 ou 640×400 | ✓ générées dans `dist/store/fr/` et `dist/store/en/` (popup, éditeur, vidéo, panneau latéral, galerie) |
+| Petite vignette promo | 440×280 | ✓ `dist/store/<langue>/promo-440x280.png` |
 
 ## Textes à copier-coller
 
@@ -48,7 +48,7 @@ Points d'attention :
 
 **Pratiques de confidentialité** (formulaire) :
 
-- Données collectées par le développeur : **aucune**.
+- Cocher seulement **« Contenu du site Web »** : captures et son peuvent quitter l'ordinateur, à la demande de l'utilisateur, vers son propre serveur ou le service de transcription choisi. Rien n'est envoyé au développeur.
 - Cocher les certifications : pas de vente de données, pas d'usage sans rapport avec l'objectif, pas d'usage pour le crédit.
 - Mentionner dans la politique : contenu des captures transmis uniquement vers le serveur choisi par l'utilisateur ; audio transmis au service de transcription choisi, à sa demande.
 - URL de la politique : le lien GitHub vers `PRIVACY.md` (le dépôt doit être **public** à ce moment-là).
