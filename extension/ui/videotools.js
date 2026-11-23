@@ -1,4 +1,4 @@
-// Outils vidéo dans le navigateur : découpe (réencodage en temps réel) et export GIF.
+// Outils vidéo dans le navigateur : découpe et conversion MP4 / WebM (réencodage en temps réel), export GIF.
 import { encodeGif } from './gif.js';
 
 function loadVideo(blob) {
@@ -19,8 +19,10 @@ function loadVideo(blob) {
 const seek = (v, t) => new Promise((r) => { v.onseeked = () => { v.onseeked = null; r(); }; v.currentTime = t; });
 const dispose = (v) => { v.pause(); URL.revokeObjectURL(v.src); v.removeAttribute('src'); v.load(); };
 
-function pickMime(original) {
-  const prefs = [original, 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm'];
+function pickMime(original, target) {
+  const all = ['video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+  // Format demandé (export MP4 ou WebM), sinon celui de la vidéo d'origine.
+  const prefs = target ? all.filter((m) => m.startsWith(target)) : [original, ...all];
   return prefs.find((m) => m && MediaRecorder.isTypeSupported(m)) || '';
 }
 
@@ -28,7 +30,7 @@ function pickMime(original) {
  * Garde [start, end] de la vidéo. Le segment est rejoué et réenregistré (temps réel, sans le son dans les haut-parleurs).
  * onProgress(0..1) ; signal : AbortSignal pour annuler.
  */
-export async function trimVideo(blob, start, end, { onProgress = () => {}, signal } = {}) {
+export async function trimVideo(blob, start, end, { onProgress = () => {}, signal, mime: target } = {}) {
   const v = await loadVideo(blob);
   try {
     end = Math.min(end, v.duration);
@@ -40,7 +42,8 @@ export async function trimVideo(blob, start, end, { onProgress = () => {}, signa
     await seek(v, start);
     const vtrack = v.captureStream().getVideoTracks()[0];
     const stream = new MediaStream([vtrack, ...dest.stream.getAudioTracks()]);
-    const mime = pickMime(blob.type);
+    const mime = pickMime(blob.type, target);
+    if (target && !mime) throw new Error(`format ${target} non pris en charge par ce navigateur`);
     const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 5_000_000 });
     const chunks = [];
     rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);

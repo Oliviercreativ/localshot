@@ -191,14 +191,7 @@ if (!c) {
   if (c.sharedId) shownShare(await health());
 }
 
-// ---------- Découpe et GIF (vidéos) ----------
-function parseTime(v) {
-  const parts = String(v).trim().replace(',', '.').split(':').map(Number);
-  if (!parts.length || parts.some((n) => !Number.isFinite(n) || n < 0)) return NaN;
-  return parts.reduce((a, n) => a * 60 + n, 0);
-}
-const showTime = (t) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0').replace('.', ',')}`;
-
+// ---------- Export MP4, WebM, GIF (vidéos) ----------
 function setupCut(player) {
   const v = player.video;
   const $ = (x) => document.getElementById(x);
@@ -207,34 +200,17 @@ function setupCut(player) {
   $('studio').href = `studio.html?id=${encodeURIComponent(id)}`;
   $('restore').hidden = !c.original;
   $('restore').addEventListener('click', async () => {
-    if (!confirm('Revenir à la vidéo d\'origine ? La découpe sera perdue.')) return;
+    if (!confirm('Revenir à la vidéo d\'origine ? Le montage sera perdu.')) return;
     const o = c.original;
     c = await updateCapture(id, { blob: o, size: o.size, ...(c.originalMeta || {}), original: null, originalMeta: null, edit: null, editSource: null, editedAt: null, savedAt: null });
     location.reload();
   });
-  let tIn = 0, tOut = 0;
   const dur = () => (Number.isFinite(v.duration) ? v.duration : c.duration || 0);
-  function sync() {
-    $('cutIn').value = showTime(tIn);
-    $('cutOut').value = showTime(tOut);
-    $('cutLen').textContent = `Segment : ${showTime(Math.max(0, tOut - tIn))}`;
-    $('cutApply').disabled = $('gifExport').disabled = !(tOut - tIn > 0.2);
-  }
-  $('cut').addEventListener('click', () => {
-    $('cutPanel').hidden = !$('cutPanel').hidden;
-    if (!tOut) tOut = dur();
-    sync();
-  });
+  const btns = ['expMp4', 'expWebm', 'gifExport'];
+  $('expMp4').disabled = !canRecord('video/mp4') && c.mime !== 'video/mp4';
+  $('expWebm').disabled = !canRecord('video/webm') && c.mime !== 'video/webm';
+  $('cut').addEventListener('click', () => ($('cutPanel').hidden = !$('cutPanel').hidden));
   $('cutClose').addEventListener('click', () => ($('cutPanel').hidden = true));
-  $('cutSetIn').addEventListener('click', () => { tIn = Math.min(v.currentTime, tOut); sync(); });
-  $('cutSetOut').addEventListener('click', () => { tOut = Math.max(v.currentTime, tIn); sync(); });
-  for (const [inp, set] of [['cutIn', (t) => (tIn = t)], ['cutOut', (t) => (tOut = t)]]) {
-    $(inp).addEventListener('change', () => {
-      const t = parseTime($(inp).value);
-      if (Number.isFinite(t)) { set(Math.min(t, dur())); v.currentTime = Math.min(t, dur()); }
-      sync();
-    });
-  }
 
   let ctrl = null;
   async function run(job) {
@@ -242,30 +218,37 @@ function setupCut(player) {
     const prog = $('cutProgress');
     prog.value = 0;
     prog.hidden = $('cutAbort').hidden = false;
-    $('cutApply').disabled = $('gifExport').disabled = true;
+    btns.forEach((b) => ($(b).disabled = true));
     v.pause();
     try { return await job((p) => (prog.value = p), ctrl.signal); }
     catch (e) { if (e.name !== 'AbortError') toast(`Échec : ${e.message}`, 'error'); return null; }
-    finally { prog.hidden = $('cutAbort').hidden = true; ctrl = null; sync(); }
+    finally {
+      prog.hidden = $('cutAbort').hidden = true;
+      ctrl = null;
+      btns.forEach((b) => ($(b).disabled = false));
+    }
   }
   $('cutAbort').addEventListener('click', () => ctrl?.abort());
 
-  $('cutApply').addEventListener('click', async () => {
-    const blob = await run((onProgress, signal) => trimVideo(c.blob, tIn, tOut, { onProgress, signal }));
-    if (!blob) return;
-    c = await updateCapture(id, { blob, size: blob.size, mime: blob.type, duration: tOut - tIn, original: c.original || c.blob, edit: null, editSource: null,
-      originalMeta: c.originalMeta || { duration: c.duration, mime: c.mime }, editedAt: new Date().toISOString(), savedAt: null });
-    toast('Vidéo découpée');
-    location.reload();
-  });
-  $('gifExport').addEventListener('click', async () => {
-    const gif = await run((onProgress, signal) => makeGif(c.blob, tIn, tOut, { onProgress, signal }));
-    if (!gif) return;
-    const r = await saveToComputer({ title: c.title, createdAt: new Date().toISOString(), blob: gif, ext: 'gif' }, { interactive: true }).catch((e) => ({ error: e.message }));
-    if (r.where) toast(`GIF enregistré dans ${r.where}`);
+  async function save(blob, ext) {
+    const r = await saveToComputer({ title: c.title, createdAt: c.createdAt, blob, ext }, { interactive: true }).catch((e) => ({ error: e.message }));
+    if (r.where) toast(`${ext.toUpperCase()} enregistré dans ${r.where}`);
     else toast(r.needsAccess ? 'Accès au dossier refusé' : `Enregistrement impossible : ${r.error}`, 'error');
+  }
+  // Même format que la vidéo : copie directe. Sinon : conversion (la vidéo est rejouée).
+  async function exportAs(type, ext) {
+    if (c.mime === type) return save(c.blob, ext);
+    const blob = await run((onProgress, signal) => trimVideo(c.blob, 0, dur(), { onProgress, signal, mime: type }));
+    if (blob) save(blob, ext);
+  }
+  $('expMp4').addEventListener('click', () => exportAs('video/mp4', 'mp4'));
+  $('expWebm').addEventListener('click', () => exportAs('video/webm', 'webm'));
+  $('gifExport').addEventListener('click', async () => {
+    const gif = await run((onProgress, signal) => makeGif(c.blob, 0, dur(), { onProgress, signal }));
+    if (gif) save(gif, 'gif');
   });
 }
+function canRecord(type) { return typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type); }
 
 // ---------- Sous-titres automatiques ----------
 function setupSubs(player) {

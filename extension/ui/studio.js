@@ -1,7 +1,7 @@
 // Studio vidéo : montage non destructif d'une vidéo LocalShot, entièrement dans le navigateur.
 // Le projet (passages, vitesses, zooms, style) est gardé avec la capture ; la vidéo d'origine n'est jamais modifiée.
 // L'export rejoue la vidéo montée sur un canvas et la réenregistre (MediaRecorder), sans rien envoyer sur Internet.
-import { getCapture, updateCapture } from '../db.js';
+import { getCapture, updateCapture, addCapture, newId } from '../db.js';
 import { toast, makeThumb } from './common.js';
 import { tr } from './i18n.js';
 
@@ -405,6 +405,27 @@ function removeSel() {
   }
   commit();
 }
+// Capture d'écran : l'image affichée (fond, marges et zoom compris) devient une photo dans la galerie.
+async function screenshot() {
+  draw();
+  const blob = await new Promise((r) => view.toBlob(r, 'image/png'));
+  if (!blob) return toast(tr('Capture impossible'), 'error');
+  const at = fmt(srcToOut(v.currentTime));
+  await addCapture({
+    id: newId(),
+    title: `${c.title} — ${tr('image à')} ${at}`.slice(0, 300),
+    sourceUrl: '',
+    mode: 'video-frame',
+    width: view.width,
+    height: view.height,
+    size: blob.size,
+    createdAt: new Date().toISOString(),
+    blob,
+    thumb: await makeThumb(view),
+  });
+  toast(`${tr('Capture d\'écran enregistrée dans la galerie')} (${at})`);
+}
+$('shot').addEventListener('click', screenshot);
 $('split').addEventListener('click', split);
 $('addZoom').addEventListener('click', addZoom);
 $('toggleSeg').addEventListener('click', removeSel);
@@ -496,6 +517,7 @@ addEventListener('keydown', (e) => {
   if (e.key === ' ' && !e.target.closest('button')) { e.preventDefault(); playing ? stopPlay() : startPlay(); }
   else if (e.key === 's' || e.key === 'S') split();
   else if (e.key === 'z' || e.key === 'Z') addZoom();
+  else if (e.key === 'c' || e.key === 'C') screenshot();
   else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); removeSel(); }
   else if (e.key === 'ArrowLeft') seekTo(v.currentTime - 1);
   else if (e.key === 'ArrowRight') seekTo(v.currentTime + 1);
