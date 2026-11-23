@@ -1,0 +1,68 @@
+/* Studio vidéo : aperçu au centre, réglages à droite, timeline en bas. */
+body.studio { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; min-height: 0; background: #eef1f5; overflow: hidden; }
+.st-top { display: flex; align-items: center; gap: 10px; padding: 10px 18px; background: #fff; border-bottom: 1px solid var(--line); }
+.st-name { max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn:disabled { opacity: .45; cursor: default; }
+
+.st-main { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; padding: 16px 18px 10px; min-height: 0; }
+.st-stage { display: flex; flex-direction: column; min-height: 0; }
+.st-canvas-wrap { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
+  background: repeating-conic-gradient(#e2e8f0 0 25%, #f1f5f9 0 50%) 0 0 / 20px 20px; border-radius: 14px; overflow: hidden; }
+#view { max-width: 100%; max-height: 100%; display: block; box-shadow: 0 6px 24px rgba(15,23,42,.18); }
+#view.picking { cursor: crosshair; }
+.st-focus-hint { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: #0f172a; color: #fff; padding: 6px 12px; border-radius: 8px; font-size: 13px; }
+.st-transport { display: flex; align-items: center; gap: 8px; padding-top: 10px; }
+.st-time { font: 600 14px ui-monospace, Menlo, monospace; }
+
+.st-side { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; min-height: 0; }
+.st-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.st-card h2 { font-size: 14px; margin: 0 0 10px; }
+.st-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+.st-field select { padding: 7px 8px; border-radius: 8px; border: 1px solid var(--line); font: inherit; font-weight: 500; }
+.st-field input[type=range] { accent-color: var(--accent); }
+.st-check { display: flex; gap: 8px; align-items: center; font-size: 13px; font-weight: 600; }
+.st-check input { accent-color: var(--accent); width: 16px; height: 16px; }
+.st-small { font-size: 12px; margin: 0 0 10px; }
+.st-help p { font-size: 12px; color: var(--muted); margin: 0; line-height: 2; }
+kbd { font: 600 11px ui-monospace, Menlo, monospace; background: #f1f5f9; border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }
+#segTools .btn, #zoomTools .btn { width: 100%; justify-content: center; }
+
+.st-bgs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.st-bg { aspect-ratio: 1; border-radius: 8px; border: 2px solid transparent; cursor: pointer; padding: 0; box-shadow: inset 0 0 0 1px rgba(15,23,42,.12); }
+.st-bg[aria-checked=true] { border-color: var(--accent); }
+.st-bg.none { background: repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 0 0 / 10px 10px; }
+.st-bg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Timeline */
+.st-timeline { background: #0f172a; color: #e2e8f0; padding: 8px 18px 14px; user-select: none; }
+.st-ruler { position: relative; height: 18px; font: 500 10px ui-monospace, Menlo, monospace; color: #94a3b8; cursor: pointer; }
+.st-ruler span { position: absolute; top: 2px; transform: translateX(-50%); }
+.st-tracks { position: relative; }
+.st-track { position: relative; border-radius: 8px; overflow: hidden; }
+.st-track-video { height: 74px; background: #1e293b; cursor: pointer; }
+.st-strip { position: absolute; inset: 0 0 22px 0; width: 100%; height: calc(100% - 22px); opacity: .85; }
+.st-wave { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 22px; }
+.st-segs, .st-zooms { position: absolute; inset: 0; }
+.st-seg { position: absolute; top: 0; bottom: 0; border: 2px solid rgba(255,255,255,.25); border-radius: 6px; background: transparent; padding: 0; cursor: pointer; }
+.st-seg:hover { border-color: rgba(255,255,255,.6); }
+.st-seg.sel { border-color: #f97316; box-shadow: inset 0 0 0 1px #f97316; }
+.st-seg.off { background: repeating-linear-gradient(135deg, rgba(15,23,42,.82) 0 6px, rgba(15,23,42,.66) 6px 12px); border-style: dashed; }
+.st-seg .sp { position: absolute; top: 4px; left: 6px; font: 700 11px ui-monospace, Menlo, monospace; color: #fff; background: #f97316; padding: 1px 5px; border-radius: 4px; }
+.st-seg:focus-visible, .st-zoom:focus-visible { outline: 2px solid #fdba74; outline-offset: 1px; }
+.st-handle { position: absolute; top: 0; bottom: 0; width: 12px; margin-left: -6px; cursor: ew-resize; z-index: 2; }
+.st-handle::after { content: ''; position: absolute; left: 4px; top: 22%; bottom: 22%; width: 4px; border-radius: 2px; background: #f97316; }
+.st-track-zoom { height: 30px; margin-top: 6px; background: #1e293b; }
+.st-track-label { position: absolute; left: 8px; top: 7px; font-size: 11px; color: #64748b; pointer-events: none; }
+.st-zoom { position: absolute; top: 3px; bottom: 3px; border-radius: 6px; border: 0; background: #7c3aed; color: #fff; font: 600 11px -apple-system, system-ui, sans-serif; cursor: grab; padding: 0 8px; overflow: hidden; white-space: nowrap; text-align: left; }
+.st-zoom.sel { background: #a855f7; box-shadow: 0 0 0 2px #fff; }
+.st-zoom .zh { position: absolute; top: 0; bottom: 0; width: 8px; cursor: ew-resize; }
+.st-zoom .zh.l { left: 0; } .st-zoom .zh.r { right: 0; }
+.st-playhead { position: absolute; top: -18px; bottom: 0; width: 2px; margin-left: -1px; background: #fff; pointer-events: none; z-index: 3; }
+.st-playhead::before { content: ''; position: absolute; top: 0; left: -5px; border: 6px solid transparent; border-top-color: #fff; }
+
+.st-export { position: fixed; inset: 0; background: rgba(15,23,42,.55); display: flex; align-items: center; justify-content: center; z-index: 40; }
+.st-export-box { background: #fff; border-radius: 14px; padding: 22px 24px; width: min(420px, 90vw); }
+.st-export-box h2 { margin: 0 0 6px; font-size: 18px; }
+.st-export-box progress { width: 100%; margin: 12px 0; accent-color: var(--accent); }
+
+@media (max-width: 900px) { .st-main { grid-template-columns: 1fr; } .st-side { max-height: 30vh; } }

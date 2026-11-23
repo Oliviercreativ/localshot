@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Studio vidéo — LocalShot</title>
+  <link rel="icon" href="../icons/icon-32.png">
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="studio.css">
+  <script type="module" src="i18n.js"></script>
+</head>
+<body class="studio">
+  <header class="st-top">
+    <a id="back" class="back" href="#" title="Retour à la vidéo" aria-label="Retour à la vidéo">←</a>
+    <img src="../icons/icon-32.png" alt="" width="24" height="24">
+    <strong>Studio</strong>
+    <span id="name" class="st-name muted"></span>
+    <span class="spacer"></span>
+    <button id="undo" class="btn" type="button" title="Annuler (⌘Z)" aria-label="Annuler (⌘Z)" disabled>↶</button>
+    <button id="redo" class="btn" type="button" title="Rétablir (⇧⌘Z)" aria-label="Rétablir (⇧⌘Z)" disabled>↷</button>
+    <button id="reset" class="btn" type="button">Tout réinitialiser</button>
+    <button id="export" class="btn primary" type="button">Exporter la vidéo</button>
+  </header>
+
+  <main class="st-main">
+    <section class="st-stage">
+      <div class="st-canvas-wrap">
+        <canvas id="view" aria-label="Aperçu de la vidéo montée"></canvas>
+        <div id="focusHint" class="st-focus-hint" hidden>Cliquez sur l'image pour choisir où zoomer</div>
+      </div>
+      <div class="st-transport">
+        <button id="play" class="btn" type="button" aria-label="Lecture (espace)" title="Lecture (espace)">▶</button>
+        <span id="time" class="st-time">0:00 / 0:00</span>
+        <span class="spacer"></span>
+        <button id="split" class="btn" type="button" title="Couper au curseur (S)">✂ Couper ici</button>
+        <button id="addZoom" class="btn" type="button" title="Ajouter un zoom au curseur (Z)">⊕ Zoom</button>
+      </div>
+    </section>
+
+    <aside class="st-side">
+      <section id="selPanel" class="st-card" hidden>
+        <h2 id="selTitle">Passage</h2>
+        <div id="segTools">
+          <label class="st-field">Vitesse
+            <select id="speed">
+              <option value="0.5">×0,5</option>
+              <option value="1">×1</option>
+              <option value="1.25">×1,25</option>
+              <option value="1.5">×1,5</option>
+              <option value="2">×2</option>
+              <option value="3">×3</option>
+            </select>
+          </label>
+          <button id="toggleSeg" class="btn" type="button">Supprimer ce passage</button>
+        </div>
+        <div id="zoomTools" hidden>
+          <label class="st-field">Zoom <span id="scaleVal" class="muted"></span>
+            <input id="scale" type="range" min="1.2" max="3" step="0.1">
+          </label>
+          <p class="muted st-small">Cliquez sur l'aperçu pour choisir la zone à agrandir.</p>
+          <button id="delZoom" class="btn danger" type="button">Supprimer ce zoom</button>
+        </div>
+      </section>
+
+      <section class="st-card">
+        <h2>Style</h2>
+        <div class="st-field">Fond
+          <div id="bgs" class="st-bgs" role="radiogroup" aria-label="Fond"></div>
+        </div>
+        <label class="st-field">Marges <span id="padVal" class="muted"></span>
+          <input id="pad" type="range" min="0" max="0.15" step="0.01">
+        </label>
+        <label class="st-field">Coins arrondis <span id="radVal" class="muted"></span>
+          <input id="rad" type="range" min="0" max="48" step="2">
+        </label>
+        <label class="st-check"><input id="shadow" type="checkbox"> Ombre</label>
+      </section>
+
+      <section class="st-card st-help">
+        <h2>Raccourcis</h2>
+        <p><kbd>Espace</kbd> lecture · <kbd>S</kbd> couper · <kbd>Z</kbd> zoom · <kbd>Suppr</kbd> supprimer · <kbd>←</kbd> <kbd>→</kbd> 1 s</p>
+      </section>
+    </aside>
+  </main>
+
+  <section class="st-timeline" aria-label="Timeline">
+    <div class="st-ruler" id="ruler"></div>
+    <div class="st-tracks" id="tracks">
+      <div class="st-track st-track-video">
+        <canvas id="strip" class="st-strip" aria-hidden="true"></canvas>
+        <canvas id="wave" class="st-wave" aria-hidden="true"></canvas>
+        <div id="segs" class="st-segs"></div>
+      </div>
+      <div class="st-track st-track-zoom">
+        <span class="st-track-label">Zooms</span>
+        <div id="zooms" class="st-zooms"></div>
+      </div>
+      <div id="playhead" class="st-playhead" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <div id="exporting" class="st-export" hidden>
+    <div class="st-export-box" role="dialog" aria-modal="true" aria-labelledby="expTitle">
+      <h2 id="expTitle">Export de la vidéo…</h2>
+      <p class="muted">La vidéo est rejouée pour être réenregistrée : comptez sa durée. Tout reste sur votre ordinateur.</p>
+      <progress id="expProgress" max="1" value="0"></progress>
+      <button id="expAbort" class="btn danger" type="button">Annuler l'export</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script type="module" src="studio.js"></script>
+</body>
+</html>

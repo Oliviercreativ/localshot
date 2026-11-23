@@ -203,11 +203,13 @@ function setupCut(player) {
   const v = player.video;
   const $ = (x) => document.getElementById(x);
   $('cut').hidden = false;
+  $('studio').hidden = false;
+  $('studio').href = `studio.html?id=${encodeURIComponent(id)}`;
   $('restore').hidden = !c.original;
   $('restore').addEventListener('click', async () => {
     if (!confirm('Revenir à la vidéo d\'origine ? La découpe sera perdue.')) return;
     const o = c.original;
-    c = await updateCapture(id, { blob: o, size: o.size, ...(c.originalMeta || {}), original: null, originalMeta: null, editedAt: null, savedAt: null });
+    c = await updateCapture(id, { blob: o, size: o.size, ...(c.originalMeta || {}), original: null, originalMeta: null, edit: null, editSource: null, editedAt: null, savedAt: null });
     location.reload();
   });
   let tIn = 0, tOut = 0;
@@ -251,7 +253,7 @@ function setupCut(player) {
   $('cutApply').addEventListener('click', async () => {
     const blob = await run((onProgress, signal) => trimVideo(c.blob, tIn, tOut, { onProgress, signal }));
     if (!blob) return;
-    c = await updateCapture(id, { blob, size: blob.size, mime: blob.type, duration: tOut - tIn, original: c.original || c.blob,
+    c = await updateCapture(id, { blob, size: blob.size, mime: blob.type, duration: tOut - tIn, original: c.original || c.blob, edit: null, editSource: null,
       originalMeta: c.originalMeta || { duration: c.duration, mime: c.mime }, editedAt: new Date().toISOString(), savedAt: null });
     toast('Vidéo découpée');
     location.reload();
