@@ -89,6 +89,8 @@ const DICT = {
   '● Choisir quoi enregistrer': '● Choose what to record', 'Chrome vous demandera de choisir un onglet, une fenêtre ou l\'écran entier. Rien n\'est envoyé sur Internet.':
     'Chrome will ask you to pick a tab, a window or the entire screen. Nothing is sent to the Internet.',
   'Enregistrement en cours': 'Recording', '❚❚ Pause': '❚❚ Pause', '■ Terminer': '■ Stop', 'Annuler sans enregistrer': 'Cancel without saving',
+  '● Démarrer': '● Start', '▶ Reprendre': '▶ Resume', 'En pause': 'Paused', 'Démarrer': 'Start', 'Reprendre': 'Resume', 'Pause': 'Pause', 'Terminer': 'Stop',
+  'Supprimer la vidéo ?': 'Delete the video?', 'Prêt : cliquez sur Démarrer': 'Ready: click Start', 'Préparez-vous…': 'Get ready…',
   'Enregistrement de la vidéo dans LocalShot…': 'Saving the video in LocalShot…', 'Vidéo': 'Video',
   'Abandonner cet enregistrement ? La vidéo ne sera pas gardée.': 'Discard this recording? The video will not be kept.',
   'Caméra indisponible ou refusée.': 'Camera unavailable or denied.', 'Ce navigateur ne sait pas enregistrer de vidéo.': 'This browser cannot record video.',

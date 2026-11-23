@@ -1,6 +1,7 @@
 // Enregistreur vidéo façon Loom : tout se passe dans cette fenêtre de l'extension.
 // getDisplayMedia (choix onglet / fenêtre / écran) + micro + bulle caméra → MediaRecorder → IndexedDB.
 import { addCapture, newId } from '../db.js';
+import { tr, EN } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const MIME = [
@@ -63,11 +64,11 @@ async function stopClicks() {
 }
 
 // ---------- État ----------
-let state = 'idle'; // idle | countdown | recording | paused | saving
+let state = 'idle'; // idle | ready | countdown | recording | paused | saving
 let display, mic, cam, audioCtx, recorder, vTrack;
+let recAudio = [];
 let chunks = [], startedAt = 0, pausedAt = 0, pausedTotal = 0, duration = 0, discard = false;
 let thumb = null, size = { width: 0, height: 0 }, tick;
-let pip = null, bubble = null; // fenêtre flottante de la caméra
 
 const elapsed = () => (!startedAt ? 0 : (state === 'paused' ? pausedAt : performance.now()) - startedAt - pausedTotal);
 const fmtTime = (ms) => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
@@ -78,35 +79,120 @@ const badge = (text, color = '#dc2626') => {
 const show = (id) => ['setup', 'live', 'saving'].forEach((s) => ($(s).hidden = s !== id));
 function showError(msg) { $('error').textContent = msg; $('error').hidden = !msg; }
 
-// ---------- Bulle caméra (Document Picture-in-Picture : toujours au premier plan) ----------
-const BUBBLE_CSS = `
-  html,body{margin:0;height:100%;background:#0f172a;overflow:hidden;font:600 13px -apple-system,system-ui,sans-serif;color:#fff}
+// ---------- Barre flottante et bulle caméra (Document Picture-in-Picture : toujours au premier plan) ----------
+// Une seule fenêtre flottante : la bulle caméra si elle est cochée, sinon une barre seule.
+// Elle affiche le chrono et les commandes : Démarrer, Pause / Reprendre, Terminer, Annuler.
+const PIP_CSS = `
+  html,body{margin:0;height:100%;background:#0f172a;overflow:hidden;font:600 13px -apple-system,system-ui,sans-serif;color:#fff;user-select:none}
   video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block}
   .cd{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-size:72px;font-weight:800;background:rgba(15,23,42,.55)}
-  .bar{position:fixed;left:8px;right:8px;bottom:8px;display:flex;gap:6px;align-items:center;justify-content:center;opacity:0;transition:opacity .15s}
-  body:hover .bar{opacity:1}
-  .bar span{background:rgba(15,23,42,.8);padding:6px 8px;border-radius:8px;font-family:ui-monospace,Menlo,monospace}
-  .bar button{border:0;border-radius:8px;padding:6px 10px;font:inherit;cursor:pointer;background:rgba(15,23,42,.8);color:#fff}
-  .bar button.stop{background:#dc2626}
+  .bar{display:flex;gap:6px;align-items:center}
+  body.cam .bar{position:fixed;left:6px;right:6px;bottom:6px;justify-content:center;flex-wrap:wrap;opacity:0;transition:opacity .15s}
+  body.cam:hover .bar,body.cam.show .bar,body.cam .bar:focus-within{opacity:1}
+  body.solo .bar{height:100%;padding:0 10px}
+  .st{display:flex;align-items:center;gap:7px;background:rgba(15,23,42,.85);padding:6px 9px;border-radius:8px}
+  body.solo .st{background:none;padding:0 4px 0 0;margin-right:auto}
+  .dot{width:9px;height:9px;border-radius:50%;background:#94a3b8;flex:none}
+  .dot.on{background:#ef4444;animation:blink 1.2s steps(2,start) infinite}
+  @keyframes blink{to{opacity:.25}}
+  @media (prefers-reduced-motion:reduce){.dot.on{animation:none}}
+  .t{font-family:ui-monospace,Menlo,monospace;font-size:14px;min-width:40px}
+  button{border:0;border-radius:8px;padding:7px 10px;font:inherit;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;white-space:nowrap}
+  body.cam button{background:rgba(15,23,42,.85)}
+  button:hover{background:rgba(255,255,255,.22)}
+  button:focus-visible{outline:2px solid #f97316;outline-offset:1px}
+  button:disabled{opacity:.45;cursor:default}
+  button.go{background:#f97316}
+  button.go:hover{background:#ea580c}
+  button.stop{background:#dc2626}
+  button.stop:hover{background:#b91c1c}
+  button.x.sure{background:#fff;color:#b91c1c}
+  body.cam .lbl{display:none}
   [hidden]{display:none!important}`;
+
+let pip = null, ui = null, pipCam = false;
+
+async function openPip(withCam) {
+  if (pip) return true;
+  if (!('documentPictureInPicture' in window)) return false;
+  try {
+    pip = await documentPictureInPicture.requestWindow(withCam ? { width: 240, height: 240 } : { width: 380, height: 52 });
+  } catch (e) {
+    console.warn('LocalShot fenêtre flottante :', e);
+    pip = null;
+    return false;
+  }
+  pipCam = withCam;
+  const d = pip.document;
+  d.title = 'LocalShot';
+  d.documentElement.lang = EN ? 'en' : 'fr';
+  d.head.append(Object.assign(d.createElement('style'), { textContent: PIP_CSS }));
+  d.body.className = withCam ? 'cam' : 'solo';
+  d.body.innerHTML = (withCam ? '<video autoplay muted playsinline></video><div class="cd" hidden></div>' : '') +
+    '<div class="bar" hidden><span class="st" role="timer"><span class="dot"></span><span class="t">0:00</span></span>' +
+    '<button class="main"></button><button class="stop"></button><button class="x"></button></div>';
+  const q = (sel) => d.querySelector(sel);
+  ui = { video: q('video'), cd: q('.cd'), bar: q('.bar'), dot: q('.dot'), t: q('.t'), main: q('.main'), stop: q('.stop'), x: q('.x') };
+  ui.main.addEventListener('click', () => (state === 'ready' ? begin() : togglePause()));
+  ui.stop.addEventListener('click', stop);
+  // Annuler en deux clics (les boîtes de dialogue ne s'affichent pas dans la fenêtre flottante).
+  let sureTimer;
+  ui.x.addEventListener('click', () => {
+    if (state === 'ready' || ui.x.classList.contains('sure')) { clearTimeout(sureTimer); return cancelRec(); }
+    ui.x.classList.add('sure');
+    setLabel(ui.x, '✕', tr('Supprimer la vidéo ?'));
+    sureTimer = setTimeout(() => { ui?.x.classList.remove('sure'); renderBar(); }, 3000);
+  });
+  pip.addEventListener('pagehide', () => {
+    pip = null; ui = null;
+    if (pipCam) stopCam();
+    pipCam = false;
+    // Barre fermée pendant un enregistrement : on rouvre la fenêtre LocalShot pour garder les commandes.
+    if (['ready', 'countdown', 'recording', 'paused'].includes(state)) focusSelf();
+  });
+  renderBar();
+  return true;
+}
+
+// Bouton : icône toujours visible, texte masqué dans la bulle caméra (trop étroite), info-bulle et nom accessible.
+function setLabel(btn, icon, text) {
+  btn.innerHTML = `${icon}<span class="lbl"> ${text}</span>`;
+  btn.title = text;
+  btn.setAttribute('aria-label', text);
+}
+
+function renderBar() {
+  if (!ui) return;
+  const active = ['ready', 'countdown', 'recording', 'paused'].includes(state);
+  ui.bar.hidden = !active;
+  if (!active) return;
+  ui.dot.classList.toggle('on', state === 'recording');
+  // Bulle caméra : pendant l'enregistrement, la barre n'apparaît qu'au survol, pour ne pas cacher le visage dans la vidéo.
+  ui.bar.ownerDocument.body.classList.toggle('show', state !== 'recording');
+  ui.main.className = state === 'ready' ? 'main go' : 'main';
+  ui.main.disabled = state === 'countdown';
+  if (state === 'ready' || state === 'countdown') setLabel(ui.main, '●', tr('Démarrer'));
+  else if (state === 'paused') setLabel(ui.main, '▶', tr('Reprendre'));
+  else setLabel(ui.main, '❚❚', tr('Pause'));
+  ui.stop.className = 'stop';
+  ui.stop.hidden = state === 'ready' || state === 'countdown';
+  setLabel(ui.stop, '■', tr('Terminer'));
+  if (!ui.x.classList.contains('sure')) setLabel(ui.x, '✕', tr('Annuler'));
+  ui.t.textContent = state === 'ready' ? '0:00' : ui.t.textContent;
+}
+
+// Ferme la barre seule ; la bulle caméra, elle, reste ouverte avec sa barre masquée.
+function closeBar() {
+  if (pip && !pipCam) pip.close();
+  else renderBar();
+}
 
 async function openBubble() {
   showError('');
+  await openPip(true);
   try {
-    if ('documentPictureInPicture' in window) {
-      pip = await documentPictureInPicture.requestWindow({ width: 240, height: 240 });
-      const d = pip.document;
-      d.title = 'LocalShot — caméra';
-      d.head.append(Object.assign(d.createElement('style'), { textContent: BUBBLE_CSS }));
-      d.body.innerHTML = '<video autoplay muted playsinline></video><div class="cd" hidden></div>' +
-        '<div class="bar" hidden><span class="t">0:00</span><button class="pause" title="Pause">❚❚</button><button class="stop" title="Terminer">■</button></div>';
-      bubble = { video: d.querySelector('video'), cd: d.querySelector('.cd'), bar: d.querySelector('.bar'), t: d.querySelector('.t'), pause: d.querySelector('.pause') };
-      bubble.pause.addEventListener('click', togglePause);
-      d.querySelector('.stop').addEventListener('click', stop);
-      pip.addEventListener('pagehide', () => { pip = null; bubble = null; stopCam(); });
-    }
     cam = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 640 }, facingMode: 'user' }, audio: false });
-    if (bubble) bubble.video.srcObject = cam;
+    if (ui?.video) ui.video.srcObject = cam;
     else Object.assign($('camPreview'), { srcObject: cam, hidden: false });
   } catch (e) {
     console.warn('LocalShot caméra :', e);
@@ -120,20 +206,24 @@ function stopCam() {
   $('cam').checked = false;
   $('camPreview').hidden = true;
 }
-function closeBubble() { pip?.close(); pip = null; bubble = null; stopCam(); }
+function closeBubble() { pip?.close(); pip = null; ui = null; pipCam = false; stopCam(); }
 $('cam').addEventListener('change', (e) => (e.target.checked ? openBubble() : closeBubble()));
+
+const focusSelf = () => chrome.windows.getCurrent().then((w) => chrome.windows.update(w.id, { state: 'normal', focused: true })).catch(() => {});
+const hideSelf = () => chrome.windows.getCurrent().then((w) => w.type === 'popup' && chrome.windows.update(w.id, { state: 'minimized' })).catch(() => {});
 
 // ---------- Enregistrement ----------
 $('start').addEventListener('click', start);
 $('pause').addEventListener('click', togglePause);
 $('stop').addEventListener('click', stop);
+$('go').addEventListener('click', begin);
 $('cancel').addEventListener('click', () => {
   if (state === 'recording' || state === 'paused') {
     if (!confirm('Abandonner cet enregistrement ? La vidéo ne sera pas gardée.')) return;
   }
-  discard = true;
-  stop();
+  cancelRec();
 });
+function cancelRec() { discard = true; stop(); }
 
 async function start() {
   if (state !== 'idle') return;
@@ -142,6 +232,8 @@ async function start() {
   discard = false;
   if (!MIME) return showError('Ce navigateur ne sait pas enregistrer de vidéo.');
   const withSys = $('sys').checked;
+  // La barre flottante s'ouvre tout de suite : Chrome ne l'autorise que juste après un clic.
+  const hasBar = await openPip(false);
   try {
     display = await navigator.mediaDevices.getDisplayMedia({
       video: { frameRate: { ideal: 30, max: 30 }, width: { max: 1920 }, height: { max: 1080 } },
@@ -159,6 +251,7 @@ async function start() {
     } else {
       showError(`Impossible de démarrer : ${e.message}`);
     }
+    closeBar();
     return;
   }
 
@@ -189,40 +282,72 @@ async function start() {
     audio = dest.stream.getAudioTracks();
   }
 
+  recAudio = audio;
   show('live');
+  // Avec la barre flottante : on attend « Démarrer », le temps de préparer son écran.
+  // Sans elle (navigateur trop ancien) : on démarre directement, comme avant.
+  if (hasBar && pip) {
+    state = 'ready';
+    renderLive();
+    renderBar();
+    hideSelf();
+  } else {
+    begin();
+  }
+}
+
+async function begin() {
+  if (state !== 'ready' && state !== 'idle') return;
+  if (!display) return;
   state = 'countdown';
+  renderLive();
+  renderBar();
   for (let n = 3; n > 0; n--) {
     if (state !== 'countdown') return;
     $('count').textContent = n;
-    if (bubble) { bubble.cd.textContent = n; bubble.cd.hidden = false; }
+    if (ui?.cd) { ui.cd.textContent = n; ui.cd.hidden = false; }
+    else if (ui) ui.t.textContent = `${n}…`;
     badge(String(n), '#f97316');
     await new Promise((r) => setTimeout(r, 1000));
   }
   if (state !== 'countdown') return;
   $('count').textContent = '';
-  if (bubble) { bubble.cd.hidden = true; bubble.bar.hidden = false; }
+  if (ui?.cd) ui.cd.hidden = true;
   await startClicks();
   if (state !== 'countdown') return stopClicks(); // arrêté pendant la mise en place : cleanup() a déjà libéré l'écran
 
-  recorder = new MediaRecorder(new MediaStream([vTrack, ...audio]), { mimeType: MIME, videoBitsPerSecond: 4_000_000, audioBitsPerSecond: 128_000 });
+  recorder = new MediaRecorder(new MediaStream([vTrack, ...recAudio]), { mimeType: MIME, videoBitsPerSecond: 4_000_000, audioBitsPerSecond: 128_000 });
   chunks = [];
   recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
   recorder.onstop = finish;
   recorder.start(1000);
   startedAt = performance.now();
+  pausedTotal = 0;
   state = 'recording';
+  renderLive();
+  renderBar();
   tick = setInterval(update, 500);
   update();
   setTimeout(grabThumb, 700);
 
   // On range la fenêtre pour qu'elle n'apparaisse pas dans la vidéo.
-  chrome.windows.getCurrent().then((w) => w.type === 'popup' && chrome.windows.update(w.id, { state: 'minimized' })).catch(() => {});
+  hideSelf();
+}
+
+// Fenêtre LocalShot : quels boutons montrer selon l'état.
+function renderLive() {
+  const ready = state === 'ready';
+  $('go').hidden = !ready;
+  $('pause').hidden = ready || state === 'countdown';
+  $('stop').hidden = ready || state === 'countdown';
+  $('liveState').textContent = ready ? 'Prêt : cliquez sur Démarrer' : state === 'paused' ? 'En pause' : state === 'countdown' ? 'Préparez-vous…' : 'Enregistrement en cours';
+  if (ready) $('timer').textContent = '0:00';
 }
 
 function update() {
   const t = fmtTime(elapsed());
   $('timer').textContent = t;
-  if (bubble) bubble.t.textContent = t;
+  if (ui) ui.t.textContent = t;
   if (state === 'recording') badge(t.length <= 4 ? t : 'REC');
 }
 
@@ -232,16 +357,16 @@ function togglePause() {
     pausedAt = performance.now();
     state = 'paused';
     $('pause').textContent = '▶ Reprendre';
-    $('liveState').textContent = 'En pause';
-    if (bubble) bubble.pause.textContent = '▶';
+    renderLive();
+    renderBar();
     badge('II', '#64748b');
   } else if (state === 'paused') {
     pausedTotal += performance.now() - pausedAt;
     recorder.resume();
     state = 'recording';
     $('pause').textContent = '❚❚ Pause';
-    $('liveState').textContent = 'Enregistrement en cours';
-    if (bubble) bubble.pause.textContent = '❚❚';
+    renderLive();
+    renderBar();
     update();
   }
 }
@@ -252,12 +377,14 @@ function stop() {
     state = 'saving';
     clearInterval(tick);
     if (!discard) show('saving');
+    renderBar();
     recorder.stop(); // → finish()
-  } else if (state === 'countdown') {
+  } else if (state === 'countdown' || state === 'ready') {
     state = 'idle';
     cleanup();
+    closeBar();
     if (discard) window.close();
-    else { show('setup'); discard = false; }
+    else { show('setup'); discard = false; focusSelf(); }
   } else if (state === 'idle' && discard) {
     cleanup();
     window.close();
@@ -330,12 +457,11 @@ async function grabThumb() {
 chrome.runtime.onMessage.addListener((msg, _sender, send) => {
   if (msg?.type === 'rec-status') send({ state, elapsed: elapsed() });
   else if (msg?.type === 'rec-stop') stop();
-  else if (msg?.type === 'rec-focus') {
-    chrome.windows.getCurrent().then((w) => chrome.windows.update(w.id, { state: 'normal', focused: true })).catch(() => {});
-  }
+  else if (msg?.type === 'rec-start') begin();
+  else if (msg?.type === 'rec-focus') focusSelf();
 });
 
 addEventListener('beforeunload', (e) => {
-  if (state === 'recording' || state === 'paused' || state === 'countdown') e.preventDefault();
+  if (['ready', 'countdown', 'recording', 'paused'].includes(state)) e.preventDefault();
 });
 addEventListener('pagehide', () => { if (state !== 'saving') badge(''); stopClicks(); pip?.close(); });

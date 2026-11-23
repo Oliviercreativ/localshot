@@ -33,5 +33,6 @@ export async function openRecorder() {
 export async function toggleRecorder() {
   const st = await recorderStatus();
   if (st && ['recording', 'paused'].includes(st.state)) return chrome.runtime.sendMessage({ type: 'rec-stop' }).catch(() => {});
+  if (st?.state === 'ready') return chrome.runtime.sendMessage({ type: 'rec-start' }).catch(() => {});
   return openRecorder();
 }
