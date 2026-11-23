@@ -51,7 +51,7 @@
     }, 40)));
   }
   function onKey(e) {
-    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cleanup(); }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cleanup(); chrome.runtime.sendMessage({ type: 'area-cancel' }).catch(() => {}); }
   }
   function cleanup() {
     root.remove();

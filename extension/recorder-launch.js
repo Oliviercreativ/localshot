@@ -12,7 +12,7 @@ export async function openRecorder() {
   const st = await recorderStatus();
   if (st) return chrome.runtime.sendMessage({ type: 'rec-focus' }).catch(() => {});
 
-  const W = 380, H = 580;
+  const W = 380, H = 640;
   const cur = await chrome.windows.getLastFocused().catch(() => null);
   // Chrome en plein écran (macOS) : une fenêtre séparée s'ouvrirait dans un autre bureau → on ouvre un onglet.
   if (cur?.state === 'fullscreen') return chrome.tabs.create({ url: URL_REC(cur.id), windowId: cur.id });

@@ -3,6 +3,7 @@
 import { addCapture, newId } from '../db.js';
 import { EN } from './i18n.js';
 import { mountBar, ACTIVE } from './recbar.js';
+import { mountDevicePicker, getDevice, emulate, DEVICES } from './device.js';
 
 const $ = (id) => document.getElementById(id);
 const MIME = [
@@ -22,6 +23,30 @@ $('sys').checked = prefs.sys;
 const savePrefs = () => localStorage.setItem('rec-prefs', JSON.stringify({ mic: $('mic').checked, sys: $('sys').checked, clicks: $('clicks').checked }));
 $('mic').addEventListener('change', savePrefs);
 $('sys').addEventListener('change', savePrefs);
+
+// ---------- Affichage : ordinateur, tablette ou mobile ----------
+// Tablette / mobile : l'onglet de la page est simulé pendant tout l'enregistrement, puis rendu normal.
+mountDevicePicker($('device'), {
+  onError: (m) => { $('deviceErr').textContent = m; $('deviceErr').hidden = false; },
+  onChange: () => { $('deviceErr').hidden = true; },
+});
+let deviceSession = null;
+async function startDevice() {
+  const device = await getDevice();
+  if (device === 'desktop') return;
+  const tab = await activeTab();
+  if (!tab) return;
+  try {
+    deviceSession = await emulate(tab.id, device);
+    $('liveHint').textContent = `${DEVICES[device].label} : choisissez l'onglet « ${tab.title || 'de la page'} » dans « Onglet Chrome ».`;
+  } catch (e) {
+    console.warn('LocalShot affichage :', e);
+    $('liveHint').textContent = 'Cette page ne peut pas être affichée en tablette ou en mobile : elle est enregistrée telle quelle.';
+  }
+}
+function stopDevice() { deviceSession?.detach(); deviceSession = null; }
+// Bandeau de Chrome « Annuler » : la simulation s'arrête, l'enregistrement continue.
+chrome.debugger?.onDetach.addListener(() => { deviceSession = null; });
 
 // ---------- Effet de clic ----------
 // Demande une permission facultative (accès aux pages) uniquement si l'option est cochée.
@@ -268,6 +293,7 @@ async function start() {
   // Celle-ci s'ouvre tout de suite : Chrome ne l'autorise que juste après un clic.
   const withPanel = await sidePanelOpen();
   const hasBar = (pip && true) || (!withPanel && await openPip(false));
+  await startDevice();
   try {
     display = await navigator.mediaDevices.getDisplayMedia({
       // Chrome ouvre son choix sur « Onglet Chrome » : seule la page est filmée, sans onglets ni panneau latéral.
@@ -286,6 +312,7 @@ async function start() {
     } else {
       showError(`Impossible de démarrer : ${e.message}`);
     }
+    stopDevice();
     closeBar();
     return;
   }
@@ -430,6 +457,7 @@ function stop() {
 
 function cleanup() {
   stopClicks();
+  stopDevice();
   stopDraw();
   for (const s of [display, mic]) s?.getTracks().forEach((t) => t.stop());
   display = mic = null;
@@ -509,4 +537,4 @@ chrome.runtime.onMessage.addListener((msg, _sender, send) => {
 addEventListener('beforeunload', (e) => {
   if (['ready', 'countdown', 'recording', 'paused'].includes(state)) e.preventDefault();
 });
-addEventListener('pagehide', () => { if (state !== 'saving') badge(''); stopClicks(); stopDraw(); pip?.close(); });
+addEventListener('pagehide', () => { if (state !== 'saving') badge(''); stopClicks(); stopDraw(); stopDevice(); pip?.close(); });

@@ -191,3 +191,9 @@ $('settings').addEventListener('click', () => page('ui/settings.html'));
 
 load();
 refreshRecorder();
+
+// Affichage ordinateur / tablette / mobile pour les captures
+import('./ui/device.js').then(({ mountDevicePicker }) => mountDevicePicker(document.getElementById('device'), {
+  onError: (m) => { const e = document.getElementById('deviceErr'); e.textContent = m; e.hidden = false; },
+  onChange: () => { document.getElementById('deviceErr').hidden = true; },
+}));
