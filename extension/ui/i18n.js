@@ -88,6 +88,8 @@ const DICT = {
   'Le son de la page enregistrée (onglet Chrome uniquement)': 'Audio of the recorded page (Chrome tab only)', 'Un cercle orange à chaque clic dans les pages Chrome': 'An orange circle on every click in Chrome pages',
   '● Choisir quoi enregistrer': '● Choose what to record', 'Chrome vous demandera de choisir un onglet, une fenêtre ou l\'écran entier. Rien n\'est envoyé sur Internet.':
     'Chrome will ask you to pick a tab, a window or the entire screen. Nothing is sent to the Internet.',
+  'Chrome vous demandera quoi enregistrer. Choisissez « Onglet Chrome » pour filmer seulement la page, sans les onglets ni le panneau latéral. Rien n\'est envoyé sur Internet.':
+    'Chrome will ask what to record. Choose “Chrome Tab” to film only the page, without the tabs or the side panel. Nothing is sent to the Internet.',
   'Enregistrement en cours': 'Recording', '❚❚ Pause': '❚❚ Pause', '■ Terminer': '■ Stop', 'Annuler sans enregistrer': 'Cancel without saving',
   '▶ Reprendre': '▶ Resume', 'En pause': 'Paused', 'Démarrer': 'Start', 'Reprendre': 'Resume', 'Pause': 'Pause', 'Terminer': 'Stop',
   'Supprimer la vidéo ?': 'Delete the video?', '📷 Capture d\'écran': '📷 Screenshot', 'Enregistrer l\'image affichée dans la galerie (C)': 'Save the displayed picture to the gallery (C)',

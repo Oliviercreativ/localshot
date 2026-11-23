@@ -270,7 +270,8 @@ async function start() {
   const hasBar = (pip && true) || (!withPanel && await openPip(false));
   try {
     display = await navigator.mediaDevices.getDisplayMedia({
-      video: { frameRate: { ideal: 30, max: 30 }, width: { max: 1920 }, height: { max: 1080 } },
+      // Chrome ouvre son choix sur « Onglet Chrome » : seule la page est filmée, sans onglets ni panneau latéral.
+      video: { displaySurface: 'browser', frameRate: { ideal: 30, max: 30 }, width: { max: 1920 }, height: { max: 1080 } },
       audio: withSys,
       systemAudio: withSys ? 'include' : 'exclude',
       selfBrowserSurface: 'exclude',
