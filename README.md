@@ -1,143 +1,147 @@
-# LocalShot — captures d'écran et vidéos 100 % locales
+# LocalShot — 100% local screenshots and screen recordings
 
-Alternative privée à Awesome Screenshot / Loom : une extension Chrome **sans aucun accès Internet**.
-Les captures et la galerie vivent **dans l'extension**, sur votre Mac. Aucun serveur à lancer au quotidien.
+A private alternative to Awesome Screenshot / Loom: a Chrome extension with **no Internet access at all**.
+Captures and the gallery live **inside the extension**, on your computer. No server to run day to day.
 
-## Installer l'extension
+> The extension's interface is currently in French. French button labels are quoted below with their English meaning.
 
-1. Ouvrir `chrome://extensions`
-2. Activer **Mode développeur** (en haut à droite)
-3. **Charger l'extension non empaquetée** → choisir le dossier `extension/`
-4. Épingler l'icône LocalShot dans la barre d'outils
+## Install the extension
 
-Après une mise à jour du code : bouton ↻ sur la carte de l'extension dans `chrome://extensions`.
+1. Open `chrome://extensions`
+2. Turn on **Developer mode** (top right)
+3. **Load unpacked** → pick the `extension/` folder
+4. Pin the LocalShot icon to the toolbar
 
-## Utilisation
+After a code update: click the ↻ button on the extension's card in `chrome://extensions`.
 
-| Mode | Raccourci |
+## Usage
+
+| Mode | Shortcut |
 |---|---|
-| Partie visible | `⌥ ⇧ V` |
-| Page entière (défilement + assemblage) | `⌥ ⇧ F` |
-| Zone sélectionnée à la souris (Échap pour annuler) | `⌥ ⇧ S` |
-| Vidéo : ouvrir l'enregistreur / terminer l'enregistrement | `⌥ ⇧ R` |
+| Visible area | `⌥ ⇧ V` |
+| Full page (scroll + stitch) | `⌥ ⇧ F` |
+| Area selected with the mouse (Esc to cancel) | `⌥ ⇧ S` |
+| Video: open the recorder / stop recording | `⌥ ⇧ R` |
 
-Après la capture, sa page s'ouvre : titre modifiable, copier l'image, télécharger, supprimer.
-La galerie s'ouvre depuis le popup (« Ouvrir la galerie »). Raccourcis modifiables dans `chrome://extensions/shortcuts`.
+After a capture, its page opens: editable title, copy image, download, delete.
+The gallery opens from the popup (« Ouvrir la galerie », Open gallery). Shortcuts can be changed in `chrome://extensions/shortcuts`.
 
-## Vidéo (façon Loom)
+## Video (Loom-style)
 
-Popup → **Enregistrer une vidéo** (ou `⌥ ⇧ R`). Une petite fenêtre s'ouvre :
+Popup → **« Enregistrer une vidéo »** (Record a video), or `⌥ ⇧ R`. A small window opens:
 
-- options **Micro**, **Caméra** (bulle flottante toujours au premier plan), **Son de l'onglet** et **Effet de clic** ;
-- **Choisir quoi enregistrer** : Chrome demande un onglet, une fenêtre ou l'écran entier ;
-- compte à rebours 3-2-1, puis la fenêtre se range dans le Dock ;
-- pour terminer : bouton ■ de la bulle, popup LocalShot, `⌥ ⇧ R`, ou « Arrêter le partage » de Chrome.
-  La pause est dans la bulle et dans la fenêtre d'enregistrement.
+- options for **Microphone**, **Camera** (floating bubble, always on top), **Tab audio** and **Click effect**;
+- **Choose what to record**: Chrome asks for a tab, a window or the entire screen;
+- 3-2-1 countdown, then the window minimizes to the Dock;
+- to stop: the ■ button in the bubble, the LocalShot popup, `⌥ ⇧ R`, or Chrome's "Stop sharing".
+  Pause is available in the bubble and in the recording window.
 
-La vidéo s'ouvre ensuite dans sa page et apparaît dans la galerie. Format MP4 quand Chrome le permet
-(lisible sur iPhone), sinon WebM.
+The video then opens in its own page and shows up in the gallery. MP4 when Chrome supports it
+(plays on iPhone), WebM otherwise.
 
-- La bulle caméra n'apparaît dans la vidéo que si vous enregistrez **l'écran entier**.
-- Le son de l'ordinateur n'est capturé que pour un **onglet Chrome** (limite de macOS).
-- **Effet de clic** : un cercle orange apparaît à chaque clic dans les pages web ouvertes dans Chrome
-  (pas dans les autres applications du Mac). Cette option demande une fois à Chrome l'accès aux pages :
-  c'est une permission **facultative**, utilisée seulement pendant l'enregistrement (le script est retiré
-  à la fin). Pour la retirer : clic droit sur l'icône LocalShot → « Gérer l'extension » → Accès aux sites.
-- La vidéo est gardée en mémoire pendant l'enregistrement : environ 30 Mo par minute.
+- The camera bubble only appears in the video when you record the **entire screen**.
+- Computer audio can only be captured for a **Chrome tab** (macOS limitation).
+- **Click effect**: an orange circle appears on every click in web pages open in Chrome
+  (not in other apps). This option asks Chrome once for access to pages: it is an **optional**
+  permission, used only while recording (the script is removed at the end) and handed back to Chrome
+  as soon as you untick the option. You can also remove it manually: right-click the LocalShot icon →
+  "Manage extension" → Site access.
+- The video is kept in memory while recording: about 30 MB per minute.
 
-⚠️ Les captures sont stockées dans le navigateur (IndexedDB de l'extension) : **désinstaller l'extension
-les efface**. Le bouton « Tout télécharger » de la galerie copie tout dans `Téléchargements/LocalShot/`.
+⚠️ Captures are stored in the browser (the extension's IndexedDB): **uninstalling the extension
+deletes them**. The gallery's « Tout télécharger » (Download all) button copies everything to `Downloads/LocalShot/`.
 
-## Partager en Wi-Fi (optionnel)
+## Sharing over Wi-Fi (optional)
 
-Seulement si vous voulez envoyer un lien au téléphone ou à l'autre Mac :
+Only if you want to send a link to your phone or another computer:
 
 ```bash
 npm run start:lan
 ```
 
-Puis, sur la page d'une capture ou d'une vidéo : **Partager** → le lien est copié. Seule cette capture est
-copiée vers le serveur local (dossier `data/`) ; « Arrêter le partage » la retire. Node ≥ 18, aucune dépendance (≥ 20.6 pour `npm run start:env`).
-`npm start` lance le serveur sans l'exposer au réseau (utile pour tester).
+Then, on a capture or video page: **« Partager »** (Share) → the link is copied. Only that capture is
+copied to the local server (`data/` folder); « Arrêter le partage » (Stop sharing) removes it. Node ≥ 18, no dependencies (≥ 20.6 for `npm run start:env`).
+`npm start` runs the server without exposing it to the network (useful for testing).
 
-## Où sont rangés les fichiers partagés
+## Where shared files are stored
 
-Le serveur LocalShot range les fichiers partagés là où vous le décidez (`STORAGE` dans `.env`, voir [.env.example](.env.example)) :
+The LocalShot server stores shared files wherever you choose (`STORAGE` in `.env`, see [.env.example](.env.example)):
 
-| `STORAGE` | Où | Pour qui |
+| `STORAGE` | Where | For whom |
 |---|---|---|
-| `local` (défaut) | le disque du serveur (Mac, Raspberry Pi, NAS, VPS) | tout garder chez soi |
-| `s3` | tout service compatible S3 : **Cloudflare R2**, AWS S3, Backblaze B2, Scaleway, OVH, Wasabi, MinIO, Garage | liens fiables pour des clients, sans machine allumée chez soi |
+| `local` (default) | the server's disk (Mac, Raspberry Pi, NAS, VPS) | keep everything at home |
+| `s3` | any S3-compatible service: **Cloudflare R2**, AWS S3, Backblaze B2, Scaleway, OVH, Wasabi, MinIO, Garage | reliable links for clients, without a machine running at home |
 
-- L'extension ne parle **qu'à votre serveur** : aucune clé cloud n'est jamais stockée dans Chrome.
-- Le bucket reste **privé** ; les vidéos sont lues via des liens temporaires signés (lecture fluide, saut dans la vidéo).
-- Signature S3 écrite sans dépendance (`server/storage/sigv4.js`), vérifiée avec les vecteurs officiels d'AWS (`npm test`).
-- Changer de stockage ne casse pas les anciens liens : les fichiers déjà partagés restent lus depuis leur stockage d'origine.
+- The extension **only talks to your server**: no cloud key is ever stored in Chrome.
+- The bucket stays **private**; videos are played through short-lived signed URLs (smooth playback, seeking).
+- S3 signing written without dependencies (`server/storage/sigv4.js`), checked against AWS's official test vectors (`npm test`).
+- Switching storage does not break old links: already-shared files keep being read from their original storage.
 
-Exemple Cloudflare R2 : créez un bucket et un jeton API « Object Read & Write » limité à ce bucket, puis
+Cloudflare R2 example: create a bucket and an "Object Read & Write" API token limited to that bucket, then
 
 ```bash
 STORAGE=s3
-S3_ENDPOINT=https://<id-du-compte>.r2.cloudflarestorage.com
+S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
 S3_BUCKET=localshot
 S3_ACCESS_KEY_ID=…
 S3_SECRET_ACCESS_KEY=…
 ```
 
-## Serveur sur un Raspberry Pi (Tailscale)
+## Server on a Raspberry Pi (Tailscale)
 
-Pour retrouver vos partages depuis l'iPhone ou l'autre Mac, même hors de chez vous, sans rien ouvrir sur Internet.
+To reach your shares from your iPhone or another computer, even away from home, without opening anything to the Internet.
 
-1. Installez **Tailscale** sur le Mac, l'iPhone et le Pi (même compte). Sur le Pi :
-   `curl -fsSL https://tailscale.com/install.sh | sh` puis `sudo tailscale up --ssh`.
-   Dans la console Tailscale, activez **MagicDNS** et **HTTPS Certificates**.
-2. Depuis ce dossier, sur le Mac : `bash deploy/pi/push.sh <nom-du-pi>`
-   (ajoutez un 2ᵉ argument pour ranger les données ailleurs, par ex. `/mnt/ssd/localshot`).
-   Le script installe le service `localshot` (systemd, durci), active `tailscale serve` (HTTPS privé),
-   les mises à jour de sécurité automatiques, et affiche une **clé d'accès**.
-3. Dans l'extension : galerie → **Serveur** → adresse `https://<nom-du-pi>.<tailnet>.ts.net` + la clé.
-   Chrome demande l'accès à cette seule adresse.
-4. Sur l'iPhone, ouvrez la même adresse dans Safari, entrez la clé : la galerie s'affiche.
+1. Install **Tailscale** on the Mac, the iPhone and the Pi (same account). On the Pi:
+   `curl -fsSL https://tailscale.com/install.sh | sh` then `sudo tailscale up --ssh`.
+   In the Tailscale admin console, enable **MagicDNS** and **HTTPS Certificates**.
+2. From this folder, on the Mac: `bash deploy/pi/push.sh <pi-name>`
+   (add a 2nd argument to store data elsewhere, e.g. `/mnt/ssd/localshot`).
+   The script installs the `localshot` service (systemd, hardened), enables `tailscale serve` (private HTTPS)
+   and automatic security updates, and prints an **access key**.
+3. In the extension: gallery → **« Serveur »** (Server) → address `https://<pi-name>.<tailnet>.ts.net` + the key.
+   Chrome asks for access to that single address only.
+4. On the iPhone, open the same address in Safari and enter the key: the gallery appears.
 
-Le serveur n'écoute que sur `127.0.0.1` du Pi ; seul Tailscale (vos appareils) peut l'atteindre.
-Clé et réglages : `/etc/localshot.env` sur le Pi. Journal : `journalctl -u localshot`.
+The server only listens on the Pi's `127.0.0.1`; only Tailscale (your devices) can reach it.
+Key and settings: `/etc/localshot.env` on the Pi. Logs: `journalctl -u localshot`.
 
-## Confidentialité
+## Privacy
 
-- Permissions : `activeTab` (uniquement l'onglet sur lequel **vous** cliquez / utilisez le raccourci),
-  `scripting` (défilement pour la page entière, cadre de sélection), `downloads` (téléchargement),
-  `unlimitedStorage` (pas de limite de place pour les captures).
-- Permission facultative (seulement si vous cochez « Effet de clic ») : accès aux pages, utilisé uniquement
-  pendant un enregistrement vidéo pour dessiner les clics, et rendue à Chrome dès que vous décochez l'option.
-- Seule adresse réseau autorisée : `http://localhost:4777` (le serveur de partage, s'il est lancé),
-  plus l'adresse de votre propre serveur si vous en réglez un (autorisation demandée pour cette seule adresse).
-  Pas d'analytics, pas de compte, pas de cloud.
-- Aucun accès permanent à vos sites : l'extension ne lit pas vos pages en arrière-plan.
+- Permissions: `activeTab` (only the tab where **you** click / use the shortcut),
+  `scripting` (scrolling for full page, selection frame), `downloads` (downloading),
+  `unlimitedStorage` (no storage limit for captures).
+- Optional permission (only if you tick "Click effect"): access to pages, used only
+  during a video recording to draw clicks, and handed back to Chrome as soon as you untick the option.
+- Only allowed network address: `http://localhost:4777` (the sharing server, if running),
+  plus your own server's address if you set one (permission requested for that single address).
+  No analytics, no account, no cloud.
+- No permanent access to your sites: the extension does not read your pages in the background.
 
-Serveur de partage :
-- `npm start` écoute seulement sur `127.0.0.1` ; `npm run start:lan` ouvre les liens au Wi-Fi.
-- Seules les captures dont on connaît le lien (`/c/<id>` aléatoire) sont visibles depuis le réseau ;
-  la liste, l'ajout et la suppression ne sont possibles que depuis ce Mac.
-- Sur le Pi (`LOCALSHOT_TOKEN` défini) : liste, ajout et suppression exigent la clé d'accès
-  (en-tête `Authorization` pour l'extension ; pour la galerie web, cookie `HttpOnly` + `SameSite=Strict`
-  contenant un identifiant de session aléatoire, révoqué à la déconnexion).
-- Un visiteur d'un lien de partage ne reçoit que les informations publiques de la capture (jamais le chemin d'un fichier local).
-- Vérification du `Host` (anti DNS-rebinding) et de l'`Origin`, pas de CORS, CSP stricte.
+Sharing server:
+- `npm start` listens only on `127.0.0.1`; `npm run start:lan` makes links reachable over Wi-Fi.
+- Only captures whose link is known (random `/c/<id>`) are visible from the network;
+  listing, adding and deleting are only possible from this computer.
+- On the Pi (`LOCALSHOT_TOKEN` set): listing, adding and deleting require the access key
+  (`Authorization` header for the extension; for the web gallery, an `HttpOnly` + `SameSite=Strict` cookie
+  holding a random session ID, revoked on logout).
+- A share-link visitor only receives the capture's public information (never a local file path).
+- `Host` check (anti DNS-rebinding) and `Origin` check, no CORS, strict CSP.
 
-## Limites connues
+## Known limitations
 
-- Page entière : les pages dont le contenu défile dans un sous-bloc (certaines web-apps) ne capturent
-  que la partie visible ; hauteur max ≈ 32 000 px (limite des canvas).
-- Les pages internes de Chrome (`chrome://`, Chrome Web Store) ne peuvent pas être capturées.
+- Full page: pages whose content scrolls inside a sub-container (some web apps) only capture
+  the visible part; max height ≈ 32,000 px (canvas limit).
+- Chrome internal pages (`chrome://`, Chrome Web Store) cannot be captured.
 
-## Prochaines étapes
+## Roadmap
 
-- Vidéo : bulle caméra aussi pour un onglet, découpe du début et de la fin, import de vidéos du Mac
-- PWA installable sur le téléphone et l'autre Mac (servie par le Pi)
-- Synchronisation automatique vers le Pi (aujourd'hui : bouton « Partager », capture par capture)
-- Annotations (flèches, texte, flou)
+- Video: camera bubble for tab recordings too, trimming start and end, importing videos from the computer
+- Installable PWA on phone and other computers (served by the Pi)
+- Automatic sync to the Pi (today: « Partager » button, one capture at a time)
+- Annotations (arrows, text, blur)
+- English interface
 
-## Licence
+## License
 
-[AGPL-3.0-or-later](LICENSE) : vous pouvez utiliser, modifier et redistribuer LocalShot ; si vous proposez
-une version modifiée du serveur à d'autres personnes (par le réseau), vous devez publier vos modifications.
+[AGPL-3.0-or-later](LICENSE): you may use, modify and redistribute LocalShot; if you offer
+a modified version of the server to other people (over a network), you must publish your changes.
