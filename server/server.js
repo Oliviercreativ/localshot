@@ -109,7 +109,9 @@ function clientAddr(req) {
   const a = req.socket.remoteAddress || '';
   const fromProxy = TRUST_PROXY || ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(a);
   const xff = String(req.headers['x-forwarded-for'] || '').split(',').map((x) => x.trim()).filter(Boolean);
-  return fromProxy && xff.length ? xff[xff.length - 1] : a;
+  const ip = (fromProxy && xff.length ? xff[xff.length - 1] : a).replace(/^::ffff:/, '');
+  // IPv6 : une seule personne dispose souvent d'un /64 entier ; on compte donc par réseau /64.
+  return ip.includes(':') ? `${ip.split(':').slice(0, 4).join(':')}::/64` : ip;
 }
 function blockedFor(key) {
   const f = failures.get(key);
@@ -469,7 +471,7 @@ const server = http.createServer(async (req, res) => {
         // Une seule place par adresse : un attaquant ne peut pas occuper toute la file et bloquer le vrai client.
         const q = linkQueues.get(c.id) || { tail: Promise.resolve(), ips: new Set() };
         const ip = clientAddr(req);
-        if (q.ips.has(ip) || q.ips.size >= 500) return send(res, 429, JSON.stringify({ error: 'Trop d\'essais en cours : réessayez dans une minute' }), 'application/json; charset=utf-8', { 'Retry-After': '60' });
+        if (q.ips.has(ip) || q.ips.size >= 50) return send(res, 429, JSON.stringify({ error: 'Trop d\'essais en cours : réessayez dans une minute' }), 'application/json; charset=utf-8', { 'Retry-After': '60' });
         q.ips.add(ip);
         linkQueues.set(c.id, q);
         const turn = q.tail.then(() => new Promise((r) => setTimeout(r, 3000)));

@@ -12,9 +12,10 @@ const createLocal = require('../storage/local');
 const KEY = 'test_key_0123456789abcdefghijklmnop';
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 
+let portSeq = 0;
 function startLocalShot(env = {}) {
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'localshot-sec-'));
-  const port = 5000 + Math.floor(Math.random() * 900);
+  const port = 5000 + (process.pid % 40) * 20 + (portSeq++ % 20);
   const child = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
     env: { PATH: process.env.PATH, PORT: String(port), LOCALSHOT_DATA: data, LOCALSHOT_TOKEN: KEY, ...env }, stdio: ['ignore', 'pipe', 'pipe'],
   });
