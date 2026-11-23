@@ -1,7 +1,7 @@
 // Panneau latéral : mêmes actions que le popup, plus les captures récentes, toujours visibles à droite.
 import { listCaptures, CHANGES } from './db.js';
 import { openRecorder, recorderStatus } from './recorder-launch.js';
-import { ACTIVE, fmtTime } from './ui/recbar.js';
+import { ACTIVE, fmtTime, DRAW_TOOLS, DRAW_COLORS } from './ui/recbar.js';
 import { h, fmtDate, fmtDuration, isVideo } from './ui/common.js';
 
 const $ = (id) => document.getElementById(id);
@@ -77,7 +77,28 @@ async function refreshRecorder() {
   main.disabled = state === 'countdown';
   $('rcStop').hidden = state === 'ready' || state === 'countdown';
   if (!$('rcCancel').classList.contains('sure')) $('rcCancel').textContent = '✕ Annuler';
+  $('rcTools').hidden = !rec.draw || !['recording', 'paused'].includes(state);
+  if (rec.draw) {
+    for (const b of $('rcTools').querySelectorAll('[data-tool]')) b.setAttribute('aria-pressed', String(b.dataset.tool === rec.draw.tool));
+    for (const b of $('rcTools').querySelectorAll('[data-c]')) b.setAttribute('aria-pressed', String(b.dataset.c === rec.draw.color));
+  }
   $('rcDetach').textContent = rec.bar ? '↙ Fermer la barre flottante' : '↗ Détacher la barre';
+}
+
+// Outils d'annotation : un clic sur l'outil actif arrête de dessiner.
+{
+  const box = $('rcTools');
+  const mk = (cls, text, label, fn) => {
+    const b = h('button', { type: 'button', class: cls, title: label, 'aria-label': label }, text);
+    b.addEventListener('click', fn);
+    box.append(b);
+    return b;
+  };
+  const draw = (tool, color) => chrome.runtime.sendMessage({ type: 'rec-draw', tool, color }).catch(() => {}).then(() => setTimeout(refreshRecorder, 150));
+  for (const [id, icon, label] of DRAW_TOOLS) mk('tool', icon, label, () => draw(rec.draw?.tool === id ? null : id, rec.draw?.color)).dataset.tool = id;
+  box.append(h('span', { class: 'sep' }));
+  for (const c of DRAW_COLORS) Object.assign(mk('sw', '', 'Couleur', () => draw(rec.draw?.tool || 'pen', c)), { style: `background:${c}` }).dataset.c = c;
+  mk('clear', '⌫', 'Effacer les annotations', () => send('rec-draw-clear'));
 }
 
 $('rcMain').addEventListener('click', () => send('rec-main').then(refreshRecorder));

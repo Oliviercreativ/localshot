@@ -29,9 +29,23 @@ export const BAR_CSS = `
   button.stop:hover{background:#b91c1c}
   button.x.sure{background:#fff;color:#b91c1c}
   body.cam .lbl{display:none}
+  .tools{display:flex;gap:4px;align-items:center}
+  body.solo{display:flex;flex-direction:column}
+  body.solo .bar{height:52px;flex:none}
+  body.solo .tools{height:40px;padding:0 10px 6px}
+  body.cam .tools{position:fixed;left:6px;right:6px;top:6px;justify-content:center;flex-wrap:wrap;opacity:0;transition:opacity .15s}
+  body.cam:hover .tools,body.cam.show .tools,body.cam .tools:focus-within{opacity:1}
+  .tools button{padding:5px 8px;font-size:15px;line-height:1}
+  .tools button[aria-pressed=true]{background:#f97316}
+  .sw{width:22px;height:22px;padding:0;border-radius:50%;border:2px solid rgba(255,255,255,.35)}
+  .sw[aria-pressed=true]{border-color:#fff;box-shadow:0 0 0 2px #f97316}
+  .sep{width:1px;height:20px;background:rgba(255,255,255,.2);margin:0 2px}
   [hidden]{display:none!important}`;
 
 export const ACTIVE = ['ready', 'countdown', 'recording', 'paused'];
+// Outils d'annotation pendant l'enregistrement (dessinés sur la page par draw.js).
+export const DRAW_TOOLS = [['pen', '✎', 'Stylo'], ['arrow', '↗', 'Flèche'], ['rect', '▭', 'Cadre'], ['mark', '▬', 'Surligneur']];
+export const DRAW_COLORS = ['#f97316', '#dc2626', '#2563eb', '#facc15'];
 export const fmtTime = (ms) => { const s = Math.floor(Math.max(0, ms) / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 
 // Bouton : icône toujours visible, texte masqué dans la bulle caméra (trop étroite), info-bulle et nom accessible.
@@ -49,15 +63,41 @@ export function setLabel(btn, icon, text) {
  * st = { state, elapsed (ms), count (compte à rebours) }.
  * onMain : Démarrer (état « prêt ») ou Pause / Reprendre ; onStop : Terminer ; onCancel : Annuler (confirmé en deux clics).
  */
-export function mountBar(doc, { cam = false, onMain, onStop, onCancel }) {
+export function mountBar(doc, { cam = false, onMain, onStop, onCancel, onDraw, onClear }) {
   doc.title = 'LocalShot';
   doc.head.append(Object.assign(doc.createElement('style'), { textContent: BAR_CSS }));
   doc.body.className = cam ? 'cam' : 'solo';
   doc.body.innerHTML = (cam ? '<video autoplay muted playsinline></video><div class="cd" hidden></div>' : '') +
     '<div class="bar" hidden><span class="st" role="timer"><span class="dot"></span><span class="t">0:00</span></span>' +
-    '<button class="main"></button><button class="stop"></button><button class="x"></button></div>';
+    '<button class="main"></button><button class="stop"></button><button class="x"></button></div>' +
+    '<div class="tools" hidden></div>';
   const q = (sel) => doc.querySelector(sel);
-  const ui = { video: q('video'), cd: q('.cd'), bar: q('.bar'), dot: q('.dot'), t: q('.t'), main: q('.main'), stop: q('.stop'), x: q('.x') };
+  const ui = { video: q('video'), cd: q('.cd'), bar: q('.bar'), dot: q('.dot'), t: q('.t'), main: q('.main'), stop: q('.stop'), x: q('.x'), tools: q('.tools') };
+  // Outils : un clic sur l'outil actif arrête de dessiner (la page redevient cliquable).
+  const mk = (cls, text, label, fn) => {
+    const b = doc.createElement('button');
+    b.className = cls;
+    b.textContent = text;
+    b.title = label;
+    b.setAttribute('aria-label', label);
+    b.addEventListener('click', fn);
+    ui.tools.append(b);
+    return b;
+  };
+  const toolBtns = DRAW_TOOLS.map(([id, icon, label]) => {
+    const b = mk('tool', icon, tr(label), () => onDraw?.(last.draw?.tool === id ? null : id, last.draw?.color));
+    b.dataset.id = id;
+    return b;
+  });
+  ui.tools.append(Object.assign(doc.createElement('span'), { className: 'sep' }));
+  const swBtns = DRAW_COLORS.map((c) => {
+    const b = mk('sw', '', tr('Couleur'), () => onDraw?.(last.draw?.tool || 'pen', c));
+    b.style.background = c;
+    b.dataset.c = c;
+    return b;
+  });
+  ui.tools.append(Object.assign(doc.createElement('span'), { className: 'sep' }));
+  mk('clear', '⌫', tr('Effacer les annotations'), () => onClear?.());
   let last = { state: 'idle' };
   let sureTimer;
 
@@ -83,6 +123,11 @@ export function mountBar(doc, { cam = false, onMain, onStop, onCancel }) {
     if (ui.cd) {
       ui.cd.hidden = state !== 'countdown';
       ui.cd.textContent = st.count || '';
+    }
+    ui.tools.hidden = !active || !st.draw || !['recording', 'paused'].includes(state);
+    if (st.draw) {
+      for (const b of toolBtns) b.setAttribute('aria-pressed', String(b.dataset.id === st.draw.tool));
+      for (const b of swBtns) b.setAttribute('aria-pressed', String(b.dataset.c === st.draw.color));
     }
     if (!active) return;
     // Bulle caméra : pendant l'enregistrement, la barre n'apparaît qu'au survol, pour ne pas cacher le visage dans la vidéo.

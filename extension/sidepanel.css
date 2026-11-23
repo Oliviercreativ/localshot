@@ -69,3 +69,12 @@ footer { display: flex; justify-content: space-between; align-items: center; pad
 .rc-btn.sure { background: #fff; color: #b91c1c; }
 .rc-btn:focus-visible, .rc-detach:focus-visible { outline: 2px solid #f97316; outline-offset: 2px; }
 .rc-detach { display: block; margin: 10px auto 0; color: #fdba74; font-size: 13px; }
+.rc-tools { display: flex; align-items: center; gap: 5px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.12); }
+.rc-tools button { border: 0; border-radius: 8px; padding: 6px 8px; background: rgba(255,255,255,.12); color: #fff; font-size: 15px; line-height: 1; cursor: pointer; }
+.rc-tools button:hover { background: rgba(255,255,255,.22); }
+.rc-tools button[aria-pressed="true"] { background: #f97316; }
+.rc-tools .sw { width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); }
+.rc-tools .sw[aria-pressed="true"] { border-color: #fff; box-shadow: 0 0 0 2px #f97316; }
+.rc-tools .sep { width: 1px; height: 20px; background: rgba(255,255,255,.2); }
+.rc-tools .clear { margin-left: auto; }
+.rc-tools button:focus-visible { outline: 2px solid #f97316; outline-offset: 2px; }
