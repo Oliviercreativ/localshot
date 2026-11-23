@@ -100,6 +100,7 @@ async function checkPassword(pw, stored) {
 // 50 erreurs sur un même lien, toutes adresses confondues, le bloquent 1 h aussi.
 const failures = new Map(); // adresse -> { n, until } (borné)
 const linkFailures = new Map(); // lien -> nombre d'erreurs (jamais évincé : borné par le nombre de liens)
+const linkQueues = new Map(); // lien très attaqué -> file d'attente des essais (un à la fois)
 // Adresse du visiteur. X-Forwarded-For n'est lu que si la requête vient d'un proxy de confiance
 // (tailscale serve / proxy local, ou LOCALSHOT_TRUST_PROXY=1 derrière un proxy Docker), et seul
 // le dernier saut, ajouté par ce proxy, compte : un visiteur ne peut pas s'inventer une adresse.
@@ -462,8 +463,18 @@ const server = http.createServer(async (req, res) => {
       const ipKey = `${c.id}|${clientAddr(req)}`;
       const wait = blockedFor(ipKey);
       if (wait) return send(res, 429, JSON.stringify({ error: `Trop d'essais : réessayez dans ${Math.ceil(wait / 60)} min` }), 'application/json; charset=utf-8', { 'Retry-After': String(wait) });
-      // Lien très attaqué (toutes adresses confondues) : chaque essai est ralenti, mais le bon mot de passe passe toujours.
-      if ((linkFailures.get(c.id) || 0) >= 50) await new Promise((r) => setTimeout(r, 3000));
+      // Lien très attaqué (toutes adresses confondues) : les essais passent un par un, 3 s chacun
+      // (20 par minute au plus, quel que soit le nombre d'attaquants), mais le bon mot de passe passe toujours.
+      if ((linkFailures.get(c.id) || 0) >= 50) {
+        const q = linkQueues.get(c.id) || { tail: Promise.resolve(), waiting: 0 };
+        if (q.waiting >= 20) return send(res, 429, JSON.stringify({ error: 'Trop d\'essais en cours : réessayez dans une minute' }), 'application/json; charset=utf-8', { 'Retry-After': '60' });
+        q.waiting += 1;
+        linkQueues.set(c.id, q);
+        const turn = q.tail.then(() => new Promise((r) => setTimeout(r, 3000)));
+        q.tail = turn;
+        await turn;
+        q.waiting -= 1;
+      }
       if (typeof body.password !== 'string' || !(await checkPassword(body.password, c.password))) {
         fail(ipKey, 5, Infinity);
         linkFailures.set(c.id, (linkFailures.get(c.id) || 0) + 1);

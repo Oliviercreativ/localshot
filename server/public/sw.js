@@ -1,5 +1,5 @@
 // Service worker de l'application LocalShot (PWA) : met en cache l'interface, jamais les captures ni l'API.
-const CACHE = 'localshot-shell-v1';
+const CACHE = 'localshot-shell-v2';
 const SHELL = ['/assets/app.css', '/assets/player.css', '/assets/common.js', '/assets/gallery.js', '/assets/viewer.js', '/assets/player.js',
   '/assets/linkopts.js', '/assets/transcript.js', '/assets/comments.js', '/assets/e2e.js', '/assets/pwa.js', '/assets/i18n.js', '/assets/icon.png', '/assets/icon-192.png'];
 
