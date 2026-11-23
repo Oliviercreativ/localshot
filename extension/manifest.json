@@ -8,11 +8,7 @@
     "scripting",
     "downloads",
     "unlimitedStorage",
-    "sidePanel",
-    "storage"
-  ],
-  "optional_permissions": [
-    "debugger"
+    "sidePanel"
   ],
   "background": {
     "service_worker": "background.js",

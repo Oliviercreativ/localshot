@@ -16,12 +16,3 @@ body.rec { min-height: 0; padding: 16px 18px 20px; background: #fff; font-size: 
 .live-actions .btn { flex: 1; justify-content: center; padding: 12px; }
 .error { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #fef2f2; color: var(--danger); font-size: 13px; }
 html:has(body.rec) { background: #fff; }
-
-/* Affichage : ordinateur, tablette, mobile */
-.device-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; font-weight: 600; color: #64748b; }
-.device-seg { flex: 1; display: flex; padding: 3px; gap: 2px; border-radius: 10px; background: #eef0f3; margin: 0; }
-.device-seg button { flex: 1; border: 0; background: none; padding: 6px 4px; border-radius: 8px; font: inherit; font-size: 12px; font-weight: 600; color: #64748b; cursor: pointer; }
-.device-seg button:hover { color: #0f172a; }
-.device-seg button[aria-checked="true"] { background: #fff; color: #ea580c; box-shadow: 0 1px 3px rgba(15,23,42,.12); }
-.device-seg button:focus-visible { outline: 2px solid #f97316; outline-offset: 1px; }
-.device-err { margin: 6px 0 0; font-size: 12px; color: #b91c1c; }

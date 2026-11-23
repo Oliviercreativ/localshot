@@ -49,9 +49,3 @@ const status = document.getElementById('status');
 const n = (await listCaptures()).length;
 status.className = 'status ok';
 status.querySelector('span').textContent = `${n} élément${n > 1 ? 's' : ''} · stockés dans Chrome`;
-
-// Affichage ordinateur / tablette / mobile pour les captures
-import('./ui/device.js').then(({ mountDevicePicker }) => mountDevicePicker(document.getElementById('device'), {
-  onError: (m) => { const e = document.getElementById('deviceErr'); e.textContent = m; e.hidden = false; },
-  onChange: () => { document.getElementById('deviceErr').hidden = true; },
-}));

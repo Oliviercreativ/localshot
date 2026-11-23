@@ -1,7 +1,6 @@
 // LocalShot — service worker. Les captures sont stockées dans l'extension (IndexedDB).
 import { addCapture, newId } from './db.js';
 import { openRecorder, toggleRecorder } from './recorder-launch.js';
-import { getDevice, emulate, emulatedShot, DEVICES } from './ui/device.js';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
@@ -10,7 +9,6 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     if (msg.reply) { p.then((error) => reply({ error })); return true; } // le panneau latéral attend le résultat
   }
   if (msg?.type === 'area-selected' && sender.tab) finishArea(sender.tab, msg.rect, msg.viewportWidth);
-  if (msg?.type === 'area-cancel' && sender.tab) endAreaSession(sender.tab.id);
   if (msg?.type === 'open-recorder') openRecorder().catch((e) => console.error('LocalShot vidéo :', e));
 });
 
@@ -24,8 +22,6 @@ chrome.commands.onCommand.addListener((command, tab) => {
 async function startCapture(mode, tabId) {
   try {
     const tab = await chrome.tabs.get(tabId);
-    const device = await getDevice();
-    if (device !== 'desktop') return await startDeviceCapture(mode, tab, device);
     if (mode === 'visible') await save(await captureBlob(tab.windowId), tab, mode);
     else if (mode === 'full') await save(await captureFullPage(tab), tab, mode);
     else if (mode === 'area') await chrome.scripting.executeScript({ target: { tabId }, files: ['area.js'] });
@@ -34,35 +30,6 @@ async function startCapture(mode, tabId) {
     flash('!', '#dc2626', tabId);
     return e.message || String(e);
   }
-}
-
-// ---------- Tablette et mobile : la page est simulée le temps de la capture ----------
-const areaSessions = new Map(); // onglet → simulation en cours pendant le choix d'une zone
-async function startDeviceCapture(mode, tab, device) {
-  const session = await emulate(tab.id, device);
-  const settle = () => sleep(800); // laisser la page se remettre en page à la nouvelle taille
-  if (mode === 'area') {
-    areaSessions.set(tab.id, session);
-    // Filet de sécurité : la simulation ne reste jamais plus de 2 minutes.
-    setTimeout(() => endAreaSession(tab.id), 120_000);
-    await settle();
-    try { await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['area.js'] }); }
-    catch (e) { endAreaSession(tab.id); throw e; }
-    return;
-  }
-  let blob;
-  try {
-    await settle();
-    blob = await emulatedShot(session, { full: mode === 'full' });
-  } finally {
-    await session.detach();
-  }
-  await save(blob, tab, mode, device);
-}
-function endAreaSession(tabId) {
-  const s = areaSessions.get(tabId);
-  areaSessions.delete(tabId);
-  return s?.detach();
 }
 
 // Chrome limite captureVisibleTab à ~2 appels / seconde.
@@ -99,31 +66,25 @@ async function captureFullPage(tab) {
 
 async function finishArea(tab, rect, viewportWidth) {
   try {
-    const session = areaSessions.get(tab.id);
-    let shot;
-    try { shot = session ? await emulatedShot(session) : await captureBlob(tab.windowId); }
-    finally { if (session) await endAreaSession(tab.id); }
-    const bmp = await createImageBitmap(shot);
+    const bmp = await createImageBitmap(await captureBlob(tab.windowId));
     const s = bmp.width / viewportWidth;
     const w = Math.max(1, Math.round(rect.w * s));
     const h = Math.max(1, Math.round(rect.h * s));
     const canvas = new OffscreenCanvas(w, h);
     canvas.getContext('2d').drawImage(bmp, Math.round(rect.x * s), Math.round(rect.y * s), w, h, 0, 0, w, h);
-    await save(await canvas.convertToBlob({ type: 'image/png' }), tab, 'area', session ? Object.keys(DEVICES).find((k) => DEVICES[k] === session.device) : undefined);
+    await save(await canvas.convertToBlob({ type: 'image/png' }), tab, 'area');
   } catch (e) {
     console.error('LocalShot:', e);
     flash('!', '#dc2626', tab.id);
   }
 }
 
-async function save(blob, tab, mode, device) {
+async function save(blob, tab, mode) {
   try {
     const bmp = await createImageBitmap(blob);
-    const base = (tab.title || '').trim().slice(0, 280) || 'Capture sans titre';
     const rec = {
       id: newId(),
-      title: device && device !== 'desktop' ? `${base} (${DEVICES[device].label})` : base,
-      ...(device && device !== 'desktop' ? { device } : {}),
+      title: (tab.title || '').trim().slice(0, 300) || 'Capture sans titre',
       sourceUrl: /^(https?|file):\/\//i.test(tab.url || '') ? tab.url : '',
       mode,
       width: bmp.width,

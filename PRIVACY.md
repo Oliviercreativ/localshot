@@ -25,8 +25,6 @@ LocalShot is a screenshot and screen-recording extension built so that **your ca
 | `downloads` | Save captures to your Downloads folder when you click Download. |
 | `unlimitedStorage` | Keep large videos in the browser without a size limit. |
 | `sidePanel` | Show the LocalShot side panel. |
-| `storage` | Remember your display choice (desktop, tablet or mobile), on this computer only. |
-| Optional `debugger` | Only if you choose Tablet or Mobile: shows the page as that device (size, pixel density, touch, mobile browser) during the capture, then returns it to normal. Removed when you go back to Desktop. Nothing is read or sent. |
 | Optional host access | Only for the addresses you set (your server, your transcription service) and for the optional click effect and annotations. |
 
 ## Your control
@@ -48,5 +46,4 @@ LocalShot est une extension de captures d'écran et de vidéos conçue pour que 
 - **Partage** : seulement quand vous cliquez sur « Partager », et uniquement vers **le serveur LocalShot que vous avez réglé vous-même**. Aucun serveur par défaut. En mode « Chiffré », le serveur ne reçoit qu'un fichier illisible.
 - **Sous-titres automatiques** : seulement si vous les activez puis cliquez sur « Sous-titres » : **le son** (jamais l'image) est envoyé au service choisi (votre serveur Whisper, Mistral AI, OpenAI ou Groq), selon ses propres conditions.
 - **Effet de clic et annotations** (facultatifs) : l'accès aux pages sert uniquement à dessiner les clics, ou vos annotations, sur la page pendant un enregistrement ; il est rendu à Chrome dès que vous décochez les deux options.
-- **Affichage tablette ou mobile** (facultatif) : l'autorisation « débogueur » sert uniquement à afficher la page comme sur l'appareil choisi pendant la capture ; Chrome l'indique par un bandeau. Elle est rendue quand vous revenez à « Ordinateur ». Rien n'est lu ni envoyé.
 - Désinstaller l'extension efface tout ce qu'elle stocke dans le navigateur.
