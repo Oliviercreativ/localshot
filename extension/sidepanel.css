@@ -78,3 +78,5 @@ footer { display: flex; justify-content: space-between; align-items: center; pad
 .rc-tools .sep { width: 1px; height: 20px; background: rgba(255,255,255,.2); }
 .rc-tools .clear { margin-left: auto; }
 .rc-tools button:focus-visible { outline: 2px solid #f97316; outline-offset: 2px; }
+.rc-note { margin: 8px 0 0; font-size: 12px; color: #fed7aa; }
+.rc-tools { flex-wrap: wrap; }

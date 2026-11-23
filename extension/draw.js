@@ -1,4 +1,4 @@
-// Annotations à main levée pendant un enregistrement vidéo LocalShot : stylo, flèche, cadre, surligneur.
+// Annotations pendant un enregistrement vidéo LocalShot : stylo, flèche, cadre, surligneur, numéros et pointeur.
 // Injecté seulement quand vous choisissez un outil pendant l'enregistrement ; ne lit rien et n'envoie rien.
 (() => {
   if (window.__lsDraw) return;
@@ -11,6 +11,7 @@
   const ctx = canvas.getContext('2d');
 
   let tool = null, color = '#f97316', shapes = [], draft = null;
+  let trail = [], raf = 0; // pointeur : traînée qui s'efface
 
   function fit() {
     const dpr = devicePixelRatio || 1;
@@ -54,6 +55,16 @@
     } else if (s.type === 'arrow') {
       ctx.lineWidth = 5;
       arrow(s);
+    } else if (s.type === 'step') {
+      ctx.beginPath();
+      ctx.arc(s.x1, s.y1, 17, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = s.color === '#facc15' ? '#0f172a' : '#fff';
+      ctx.font = '700 18px -apple-system, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(s.n), s.x1, s.y1 + 1);
     }
     ctx.restore();
   }
@@ -62,13 +73,53 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (const s of shapes) draw(s);
     if (draft) draw(draft);
+    paintTrail();
+  }
+
+  // Pointeur : un point lumineux suit la souris, sa traînée s'efface en 0,6 s. La page reste cliquable.
+  function paintTrail() {
+    const now = performance.now();
+    trail = trail.filter((p) => now - p.t < 600);
+    if (tool !== 'laser' || !trail.length) return;
+    ctx.save();
+    ctx.lineCap = ctx.lineJoin = 'round';
+    for (let i = 1; i < trail.length; i++) {
+      const a = 1 - (now - trail[i].t) / 600;
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = a * 0.8;
+      ctx.lineWidth = 3 + 7 * a;
+      ctx.beginPath();
+      ctx.moveTo(trail[i - 1].x, trail[i - 1].y);
+      ctx.lineTo(trail[i].x, trail[i].y);
+      ctx.stroke();
+    }
+    const last = trail[trail.length - 1];
+    ctx.globalAlpha = 1;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(last.x, last.y, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  function onMove(e) {
+    trail.push({ x: e.clientX, y: e.clientY, t: performance.now() });
+    if (!raf) raf = requestAnimationFrame(function step() {
+      paint();
+      raf = trail.length && tool === 'laser' ? requestAnimationFrame(step) : 0;
+    });
   }
 
   canvas.addEventListener('pointerdown', (e) => {
-    if (!tool || e.button !== 0) return;
+    if (!tool || tool === 'laser' || e.button !== 0) return;
     e.preventDefault();
     canvas.setPointerCapture(e.pointerId);
     const p = [e.clientX, e.clientY];
+    if (tool === 'step') {
+      shapes.push({ type: 'step', color, x1: p[0], y1: p[1], n: shapes.filter((x) => x.type === 'step').length + 1 });
+      return paint();
+    }
     draft = tool === 'pen' || tool === 'mark'
       ? { type: tool, color, pts: [p] }
       : { type: tool, color, x1: p[0], y1: p[1], x2: p[0], y2: p[1] };
@@ -96,13 +147,18 @@
     tool = t || null;
     if (c) color = c;
     if (!host.isConnected) (document.documentElement || document).append(host);
-    host.style.pointerEvents = tool ? 'auto' : 'none';
-    canvas.style.cursor = tool ? 'crosshair' : 'default';
+    // Le pointeur ne bloque pas la page ; les autres outils captent la souris pour dessiner.
+    host.style.pointerEvents = tool && tool !== 'laser' ? 'auto' : 'none';
+    canvas.style.cursor = tool === 'step' ? 'copy' : tool ? 'crosshair' : 'default';
+    if (tool === 'laser') addEventListener('pointermove', onMove, { capture: true, passive: true });
+    else { removeEventListener('pointermove', onMove, { capture: true }); trail = []; paint(); }
   }
 
   function off() {
     removeEventListener('resize', fit);
     removeEventListener('keydown', onKey, true);
+    removeEventListener('pointermove', onMove, { capture: true });
+    cancelAnimationFrame(raf);
     host.remove();
     delete window.__lsDraw;
   }

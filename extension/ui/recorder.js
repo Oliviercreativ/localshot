@@ -16,10 +16,10 @@ const MIME = [
 ].find((t) => MediaRecorder.isTypeSupported(t));
 
 // ---------- Préférences ----------
-const prefs = { mic: true, sys: true, clicks: false, draw: false, ...JSON.parse(localStorage.getItem('rec-prefs') || '{}') };
+const prefs = { mic: true, sys: true, clicks: false, ...JSON.parse(localStorage.getItem('rec-prefs') || '{}') };
 $('mic').checked = prefs.mic;
 $('sys').checked = prefs.sys;
-const savePrefs = () => localStorage.setItem('rec-prefs', JSON.stringify({ mic: $('mic').checked, sys: $('sys').checked, clicks: $('clicks').checked, draw: $('draw').checked }));
+const savePrefs = () => localStorage.setItem('rec-prefs', JSON.stringify({ mic: $('mic').checked, sys: $('sys').checked, clicks: $('clicks').checked }));
 $('mic').addEventListener('change', savePrefs);
 $('sys').addEventListener('change', savePrefs);
 
@@ -27,42 +27,75 @@ $('sys').addEventListener('change', savePrefs);
 // Demande une permission facultative (accès aux pages) uniquement si l'option est cochée.
 // Le script n'est injecté que pendant l'enregistrement, puis retiré.
 const PAGES = { origins: ['http://*/*', 'https://*/*'] };
-chrome.permissions.contains(PAGES).then((ok) => { $('clicks').checked = prefs.clicks && ok; $('draw').checked = prefs.draw && ok; });
-// Effet de clic et annotations partagent la même autorisation facultative.
-for (const id of ['clicks', 'draw']) {
-  $(id).addEventListener('change', async (e) => {
-    if (e.target.checked && !(await chrome.permissions.request(PAGES).catch(() => false))) {
-      e.target.checked = false;
-      showError(id === 'clicks'
-        ? 'Sans l\'autorisation de Chrome, l\'effet de clic ne peut pas s\'afficher dans les pages.'
-        : 'Sans l\'autorisation de Chrome, impossible de dessiner sur les pages.');
-    }
-    // Plus aucune option ne s'en sert : on rend l'accès aux pages, pour ne garder aucune autorisation inutile.
-    if (!$('clicks').checked && !$('draw').checked) chrome.permissions.remove(PAGES).catch(() => {});
-    savePrefs();
-  });
-}
+// Accès aux pages (facultatif) : demandé pour l'effet de clic, ou au premier outil d'annotation choisi.
+let pagesOk = false;
+const syncPages = () => chrome.permissions.contains(PAGES).then((ok) => (pagesOk = ok)).catch(() => {});
+chrome.permissions.onAdded?.addListener(syncPages);
+chrome.permissions.onRemoved?.addListener(syncPages);
+chrome.permissions.contains(PAGES).then((ok) => { pagesOk = ok; $('clicks').checked = prefs.clicks && ok; });
+$('clicks').addEventListener('change', async (e) => {
+  if (e.target.checked && !(await chrome.permissions.request(PAGES).catch(() => false))) {
+    e.target.checked = false;
+    showError('Sans l\'autorisation de Chrome, l\'effet de clic ne peut pas s\'afficher dans les pages.');
+  }
+  // Option décochée : on rend l'accès aux pages, pour ne garder aucune autorisation inutile.
+  if (!e.target.checked && !drawGranted) chrome.permissions.remove(PAGES).catch(() => {});
+  savePrefs();
+});
 
 // ---------- Annotations pendant l'enregistrement ----------
-// draw.js n'est injecté que dans l'onglet affiché au moment où vous choisissez un outil.
-let drawing = null; // { tool, color } quand l'option est cochée
+// Les outils sont toujours proposés pendant l'enregistrement. draw.js n'est injecté que dans l'onglet affiché
+// quand vous choisissez un outil. L'accès aux pages, demandé à ce moment-là, est rendu à la fin de l'enregistrement.
+let drawing = null; // { tool, color } pendant l'enregistrement
+let drawGranted = false; // accès accordé pour les annotations de cet enregistrement
+let note = null, noteTimer; // message court affiché dans la barre et le panneau
 const drawnTabs = new Set();
-async function activeTab() {
-  const w = await chrome.windows.getLastFocused({ windowTypes: ['normal'] }).catch(() => null);
-  if (!w) return null;
-  const [tab] = await chrome.tabs.query({ active: true, windowId: w.id }).catch(() => []);
-  return tab && /^https?:/.test(tab.url || '') ? tab : null;
+function say(text) {
+  note = text;
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(() => { note = null; renderBar(); }, 4000);
+  renderBar();
 }
-async function setDraw(tool, color) {
+
+// Fenêtre Chrome où dessiner : celle d'où l'enregistrement a été lancé, puis la dernière fenêtre normale utilisée.
+let targetWin = Number(new URLSearchParams(location.search).get('win')) || null;
+chrome.windows.onFocusChanged.addListener(async (wid) => {
+  if (wid < 0) return;
+  const w = await chrome.windows.get(wid).catch(() => null);
+  // La barre flottante est vue par Chrome comme une fenêtre normale, mais toujours au premier plan : on l'ignore.
+  if (w?.type === 'normal' && !w.alwaysOnTop) targetWin = wid;
+});
+async function activeTab() {
+  let win = targetWin;
+  if (!win) {
+    const all = await chrome.windows.getAll({ windowTypes: ['normal'] }).catch(() => []);
+    win = (all.find((w) => w.focused && !w.alwaysOnTop) || all.find((w) => !w.alwaysOnTop))?.id;
+  }
+  if (!win) return null;
+  const [tab] = await chrome.tabs.query({ active: true, windowId: win }).catch(() => []);
+  return tab || null;
+}
+
+// Appelé juste après un clic (barre flottante ou panneau) : la demande d'autorisation doit partir tout de suite.
+function setDraw(tool, color) {
   if (!drawing) return;
   drawing = { tool: tool || null, color: color || drawing.color };
   renderBar();
+  if (!tool) return applyDraw();
+  if (pagesOk) return applyDraw();
+  chrome.permissions.request(PAGES).then((ok) => {
+    if (!ok) { drawing.tool = null; return say('Chrome n\'a pas autorisé LocalShot à dessiner sur les pages.'); }
+    pagesOk = drawGranted = true;
+    applyDraw();
+  }, (e) => { console.warn('LocalShot annotations :', e); drawing.tool = null; say('Cliquez de nouveau sur l\'outil pour autoriser le dessin.'); });
+}
+async function applyDraw() {
   const tab = await activeTab();
-  if (!tab) {
-    if (tool) $('liveHint').textContent = 'Les annotations ne s\'affichent que sur une page web ouverte dans Chrome.';
-    return;
-  }
   try {
+    if (!tab?.url || !/^https?:/.test(tab.url)) {
+      if (drawing.tool) { drawing.tool = null; say('Ouvrez une page web dans Chrome pour dessiner dessus.'); }
+      return;
+    }
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['draw.js'] });
     drawnTabs.add(tab.id);
     // Les autres onglets arrêtent de capter la souris.
@@ -70,6 +103,8 @@ async function setDraw(tool, color) {
     await chrome.tabs.sendMessage(tab.id, { type: 'ls-draw', tool: drawing.tool, color: drawing.color });
   } catch (e) {
     console.warn('LocalShot annotations :', e);
+    drawing.tool = null;
+    say('Impossible de dessiner sur cette page.');
   }
 }
 async function clearDraw() {
@@ -79,6 +114,10 @@ async function clearDraw() {
 function stopDraw() {
   for (const id of drawnTabs) chrome.tabs.sendMessage(id, { type: 'ls-draw-off' }).catch(() => {});
   drawnTabs.clear();
+  drawing = null;
+  // Accès accordé seulement pour dessiner : on le rend à Chrome.
+  if (drawGranted && !$('clicks').checked) chrome.permissions.remove(PAGES).catch(() => {});
+  drawGranted = false;
 }
 
 // clicksGen change à chaque arrêt : un démarrage encore en cours voit qu'il a été annulé et défait ce qu'il a fait.
@@ -126,14 +165,14 @@ function showError(msg) { $('error').textContent = msg; $('error').hidden = !msg
 // ---------- Barre flottante et bulle caméra (Document Picture-in-Picture : toujours au premier plan) ----------
 // Une seule fenêtre flottante : la bulle caméra si elle est cochée, sinon une barre seule (voir recbar.js).
 let pip = null, bar = null, pipCam = false;
-const status = () => ({ state, elapsed: elapsed(), count: cdN, bar: !!pip && !pipCam, draw: drawing });
+const status = () => ({ state, elapsed: elapsed(), count: cdN, bar: !!pip && !pipCam, draw: drawing, note });
 const renderBar = () => bar?.render(status());
 
 async function openPip(withCam) {
   if (pip) return true;
   if (!('documentPictureInPicture' in window)) return false;
   try {
-    pip = await documentPictureInPicture.requestWindow(withCam ? { width: 240, height: 240 } : { width: 380, height: $('draw').checked ? 96 : 52 });
+    pip = await documentPictureInPicture.requestWindow(withCam ? { width: 240, height: 240 } : { width: 400, height: 96 });
   } catch (e) {
     console.warn('LocalShot fenêtre flottante :', e);
     pip = null;
@@ -311,7 +350,7 @@ async function begin() {
   await startClicks();
   if (state !== 'countdown') return stopClicks(); // arrêté pendant la mise en place : cleanup() a déjà libéré l'écran
 
-  drawing = $('draw').checked && (await chrome.permissions.contains(PAGES)) ? { tool: null, color: '#f97316' } : null;
+  drawing = { tool: null, color: '#f97316' };
   recorder = new MediaRecorder(new MediaStream([vTrack, ...recAudio]), { mimeType: MIME, videoBitsPerSecond: 4_000_000, audioBitsPerSecond: 128_000 });
   chunks = [];
   recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
@@ -391,7 +430,6 @@ function stop() {
 function cleanup() {
   stopClicks();
   stopDraw();
-  drawing = null;
   for (const s of [display, mic]) s?.getTracks().forEach((t) => t.stop());
   display = mic = null;
   audioCtx?.close().catch(() => {});
@@ -460,6 +498,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, send) => {
   else if (msg?.type === 'rec-detach') detach();
   else if (msg?.type === 'rec-draw') setDraw(msg.tool, msg.color);
   else if (msg?.type === 'rec-draw-clear') clearDraw();
+  else if (msg?.type === 'rec-draw-granted') { pagesOk = true; if (drawing) drawGranted = true; }
   else if (msg?.type === 'rec-undock') closeBar();
   else if (msg?.type === 'rec-stop') stop();
   else if (msg?.type === 'rec-start') begin();

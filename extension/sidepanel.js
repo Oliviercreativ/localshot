@@ -78,6 +78,8 @@ async function refreshRecorder() {
   $('rcStop').hidden = state === 'ready' || state === 'countdown';
   if (!$('rcCancel').classList.contains('sure')) $('rcCancel').textContent = '✕ Annuler';
   $('rcTools').hidden = !rec.draw || !['recording', 'paused'].includes(state);
+  $('rcNote').hidden = !rec.note;
+  $('rcNote').textContent = rec.note || '';
   if (rec.draw) {
     for (const b of $('rcTools').querySelectorAll('[data-tool]')) b.setAttribute('aria-pressed', String(b.dataset.tool === rec.draw.tool));
     for (const b of $('rcTools').querySelectorAll('[data-c]')) b.setAttribute('aria-pressed', String(b.dataset.c === rec.draw.color));
@@ -94,7 +96,23 @@ async function refreshRecorder() {
     box.append(b);
     return b;
   };
-  const draw = (tool, color) => chrome.runtime.sendMessage({ type: 'rec-draw', tool, color }).catch(() => {}).then(() => setTimeout(refreshRecorder, 150));
+  // Accès aux pages : demandé ici, au clic, la première fois qu'un outil est choisi.
+  const PAGES = { origins: ['http://*/*', 'https://*/*'] };
+  let pagesOk = false;
+  const sync = () => chrome.permissions.contains(PAGES).then((ok) => (pagesOk = ok)).catch(() => {});
+  sync();
+  chrome.permissions.onAdded?.addListener(sync);
+  chrome.permissions.onRemoved?.addListener(sync);
+  const sendDraw = (tool, color) => chrome.runtime.sendMessage({ type: 'rec-draw', tool, color }).catch(() => {}).then(() => setTimeout(refreshRecorder, 150));
+  const draw = (tool, color) => {
+    if (!tool || pagesOk) return sendDraw(tool, color);
+    chrome.permissions.request(PAGES).then((ok) => {
+      if (!ok) return showError('Chrome n\'a pas autorisé LocalShot à dessiner sur les pages.');
+      pagesOk = true;
+      chrome.runtime.sendMessage({ type: 'rec-draw-granted' }).catch(() => {});
+      sendDraw(tool, color);
+    }, (e) => showError(e.message));
+  };
   for (const [id, icon, label] of DRAW_TOOLS) mk('tool', icon, label, () => draw(rec.draw?.tool === id ? null : id, rec.draw?.color)).dataset.tool = id;
   box.append(h('span', { class: 'sep' }));
   for (const c of DRAW_COLORS) Object.assign(mk('sw', '', 'Couleur', () => draw(rec.draw?.tool || 'pen', c)), { style: `background:${c}` }).dataset.c = c;

@@ -35,7 +35,9 @@ export const BAR_CSS = `
   body.solo .tools{height:40px;padding:0 10px 6px}
   body.cam .tools{position:fixed;left:6px;right:6px;top:6px;justify-content:center;flex-wrap:wrap;opacity:0;transition:opacity .15s}
   body.cam:hover .tools,body.cam.show .tools,body.cam .tools:focus-within{opacity:1}
-  .tools button{padding:5px 8px;font-size:15px;line-height:1}
+  .tools button{padding:5px 7px;font-size:15px;line-height:1;min-width:30px}
+  .note{font-size:12px;font-weight:500;color:#fed7aa;padding:0 12px 6px;height:40px;display:flex;align-items:center}
+  body.cam .note{position:fixed;left:6px;right:6px;top:6px;height:auto;padding:6px 8px;background:rgba(15,23,42,.85);border-radius:8px}
   .tools button[aria-pressed=true]{background:#f97316}
   .sw{width:22px;height:22px;padding:0;border-radius:50%;border:2px solid rgba(255,255,255,.35)}
   .sw[aria-pressed=true]{border-color:#fff;box-shadow:0 0 0 2px #f97316}
@@ -44,7 +46,7 @@ export const BAR_CSS = `
 
 export const ACTIVE = ['ready', 'countdown', 'recording', 'paused'];
 // Outils d'annotation pendant l'enregistrement (dessinés sur la page par draw.js).
-export const DRAW_TOOLS = [['pen', '✎', 'Stylo'], ['arrow', '↗', 'Flèche'], ['rect', '▭', 'Cadre'], ['mark', '▬', 'Surligneur']];
+export const DRAW_TOOLS = [['laser', '◉', 'Pointeur'], ['pen', '✎', 'Stylo'], ['arrow', '↗', 'Flèche'], ['rect', '▭', 'Cadre'], ['step', '①', 'Numéro'], ['mark', '▬', 'Surligneur']];
 export const DRAW_COLORS = ['#f97316', '#dc2626', '#2563eb', '#facc15'];
 export const fmtTime = (ms) => { const s = Math.floor(Math.max(0, ms) / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 
@@ -70,9 +72,9 @@ export function mountBar(doc, { cam = false, onMain, onStop, onCancel, onDraw, o
   doc.body.innerHTML = (cam ? '<video autoplay muted playsinline></video><div class="cd" hidden></div>' : '') +
     '<div class="bar" hidden><span class="st" role="timer"><span class="dot"></span><span class="t">0:00</span></span>' +
     '<button class="main"></button><button class="stop"></button><button class="x"></button></div>' +
-    '<div class="tools" hidden></div>';
+    '<div class="tools" hidden></div><div class="note" role="status" hidden></div>';
   const q = (sel) => doc.querySelector(sel);
-  const ui = { video: q('video'), cd: q('.cd'), bar: q('.bar'), dot: q('.dot'), t: q('.t'), main: q('.main'), stop: q('.stop'), x: q('.x'), tools: q('.tools') };
+  const ui = { video: q('video'), cd: q('.cd'), bar: q('.bar'), dot: q('.dot'), t: q('.t'), main: q('.main'), stop: q('.stop'), x: q('.x'), tools: q('.tools'), note: q('.note') };
   // Outils : un clic sur l'outil actif arrête de dessiner (la page redevient cliquable).
   const mk = (cls, text, label, fn) => {
     const b = doc.createElement('button');
@@ -124,7 +126,9 @@ export function mountBar(doc, { cam = false, onMain, onStop, onCancel, onDraw, o
       ui.cd.hidden = state !== 'countdown';
       ui.cd.textContent = st.count || '';
     }
-    ui.tools.hidden = !active || !st.draw || !['recording', 'paused'].includes(state);
+    ui.note.hidden = !st.note;
+    ui.note.textContent = st.note ? tr(st.note) : '';
+    ui.tools.hidden = !!st.note || !active || !st.draw || !['recording', 'paused'].includes(state);
     if (st.draw) {
       for (const b of toolBtns) b.setAttribute('aria-pressed', String(b.dataset.id === st.draw.tool));
       for (const b of swBtns) b.setAttribute('aria-pressed', String(b.dataset.c === st.draw.color));
