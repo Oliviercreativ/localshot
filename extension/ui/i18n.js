@@ -94,7 +94,7 @@ const DICT = {
   '▶ Reprendre': '▶ Resume', 'En pause': 'Paused', 'Démarrer': 'Start', 'Reprendre': 'Resume', 'Pause': 'Pause', 'Terminer': 'Stop',
   'Supprimer la vidéo ?': 'Delete the video?', '📷 Capture d\'écran': '📷 Screenshot', 'Enregistrer l\'image affichée dans la galerie (C)': 'Save the displayed picture to the gallery (C)',
   'Capture impossible': 'Screenshot failed', 'image à': 'frame at', 'Capture d\'écran enregistrée dans la galerie': 'Screenshot saved to the gallery',
-  'Exporter': 'Export', 'Exporter la vidéo': 'Export the video',
+  'Exporter': 'Export', 'Exporter ▾': 'Export ▾', 'Exporter la vidéo': 'Export the video',
   'MP4 se lit partout, même sur iPhone. WebM convient bien au web. Le GIF, sans son, reprend les 20 premières secondes : pour un autre passage, coupez d\'abord dans le Studio. Une conversion rejoue la vidéo : elle prend autant de temps qu\'elle.':
     'MP4 plays everywhere, iPhone included. WebM suits the web well. The GIF, without sound, keeps the first 20 seconds: for another part, cut it in the Studio first. A conversion replays the video: it takes as long as the video.',
   'Revenir à la vidéo d\'origine ? Le montage sera perdu.': 'Go back to the original video? The edit will be lost.', 'Pointeur': 'Pointer', 'Numéro': 'Number',

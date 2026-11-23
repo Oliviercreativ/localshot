@@ -19,7 +19,23 @@
     <div class="actions">
       <button id="annotate" class="btn">Annoter</button>
       <a id="studio" class="btn primary" hidden>Studio</a>
-      <button id="cut" class="btn" hidden>Exporter</button>
+      <div class="menu-wrap">
+        <button id="cut" class="btn" aria-haspopup="dialog" aria-expanded="false" hidden>Exporter ▾</button>
+        <div id="cutPanel" class="cut-panel menu" role="dialog" aria-label="Exporter la vidéo" hidden>
+      <div class="cut-row">
+        <b>Exporter la vidéo</b>
+        <button id="expMp4" class="btn primary" type="button">MP4</button>
+        <button id="expWebm" class="btn" type="button">WebM</button>
+        <button id="gifExport" class="btn" type="button">GIF</button>
+      </div>
+      <div class="cut-row">
+        <progress id="cutProgress" max="1" value="0" hidden></progress>
+        <button id="cutAbort" class="btn danger" type="button" hidden>Annuler</button>
+      </div>
+      <p class="hint">MP4 se lit partout, même sur iPhone. WebM convient bien au web. Le GIF, sans son, reprend les 20 premières secondes : pour un autre passage, coupez d'abord dans le Studio.
+        Une conversion rejoue la vidéo : elle prend autant de temps qu'elle.</p>
+    </div>
+      </div>
       <button id="subs" class="btn" hidden>Sous-titres</button>
       <button id="copyImg" class="btn primary">Copier l'image</button>
       <button id="download" class="btn">Télécharger</button>
@@ -35,19 +51,6 @@
       <button id="saveBannerBtn" class="btn primary">Autoriser et enregistrer</button>
     </div>
     <div id="stage" class="stage is-loading"><span class="loader" role="status" aria-label="Chargement…"></span><img id="img" alt="Capture d'écran" hidden></div>
-    <div id="cutPanel" class="cut-panel" hidden>
-      <div class="cut-row">
-        <b>Exporter la vidéo</b>
-        <button id="expMp4" class="btn primary" type="button">MP4</button>
-        <button id="expWebm" class="btn" type="button">WebM</button>
-        <button id="gifExport" class="btn" type="button">GIF</button>
-        <button id="cutClose" class="btn" type="button">Fermer</button>
-        <progress id="cutProgress" max="1" value="0" hidden></progress>
-        <button id="cutAbort" class="btn danger" type="button" hidden>Annuler</button>
-      </div>
-      <p class="hint">MP4 se lit partout, même sur iPhone. WebM convient bien au web. Le GIF, sans son, reprend les 20 premières secondes : pour un autre passage, coupez d'abord dans le Studio.
-        Une conversion rejoue la vidéo : elle prend autant de temps qu'elle.</p>
-    </div>
     <div id="trBar" class="tr-bar" hidden>
       <b>Transcription</b><span class="muted">cliquez sur une phrase pour la corriger</span>
       <div class="spacer"></div>

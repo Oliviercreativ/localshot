@@ -1,6 +1,6 @@
 import { getCapture, updateCapture, deleteCapture } from '../db.js';
 import { createPlayer } from './player.js';
-import { saveConf, saveToComputer } from './savefolder.js';
+import { saveConf, saveToComputer, folderAccess } from './savefolder.js';
 import { linkOptions } from './linkopts.js';
 import { openEditor } from './editor.js';
 import { trimVideo, makeGif } from './videotools.js';
@@ -209,8 +209,15 @@ function setupCut(player) {
   const btns = ['expMp4', 'expWebm', 'gifExport'];
   $('expMp4').disabled = !canRecord('video/mp4') && c.mime !== 'video/mp4';
   $('expWebm').disabled = !canRecord('video/webm') && c.mime !== 'video/webm';
-  $('cut').addEventListener('click', () => ($('cutPanel').hidden = !$('cutPanel').hidden));
-  $('cutClose').addEventListener('click', () => ($('cutPanel').hidden = true));
+  const menu = (open) => {
+    if (!open && ctrl) return; // export en cours : le menu reste ouvert pour suivre la progression
+    $('cutPanel').hidden = !open;
+    $('cut').setAttribute('aria-expanded', String(open));
+    if (open) $('expMp4').focus();
+  };
+  $('cut').addEventListener('click', () => menu($('cutPanel').hidden));
+  document.addEventListener('click', (e) => { if (!e.target.closest('.menu-wrap')) menu(false); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('cutPanel').hidden) { menu(false); $('cut').focus(); } });
 
   let ctrl = null;
   async function run(job) {
@@ -226,17 +233,22 @@ function setupCut(player) {
       prog.hidden = $('cutAbort').hidden = true;
       ctrl = null;
       btns.forEach((b) => ($(b).disabled = false));
+      $('expMp4').disabled = !canRecord('video/mp4') && c.mime !== 'video/mp4';
+      $('expWebm').disabled = !canRecord('video/webm') && c.mime !== 'video/webm';
     }
   }
   $('cutAbort').addEventListener('click', () => ctrl?.abort());
 
   async function save(blob, ext) {
-    const r = await saveToComputer({ title: c.title, createdAt: c.createdAt, blob, ext }, { interactive: true }).catch((e) => ({ error: e.message }));
+    const r = await saveToComputer({ title: c.title, createdAt: c.createdAt, blob, ext }, { interactive: true, fallback: true }).catch((e) => ({ error: e.message }));
     if (r.where) toast(`${ext.toUpperCase()} enregistré dans ${r.where}`);
     else toast(r.needsAccess ? 'Accès au dossier refusé' : `Enregistrement impossible : ${r.error}`, 'error');
   }
   // Même format que la vidéo : copie directe. Sinon : conversion (la vidéo est rejouée).
+  // Dossier de sauvegarde : l'accès se demande pendant le clic, avant une conversion qui peut être longue.
+  const askFolder = () => (saveConf().mode === 'folder' ? folderAccess(true).catch(() => null) : null);
   async function exportAs(type, ext) {
+    await askFolder();
     if (c.mime === type) return save(c.blob, ext);
     const blob = await run((onProgress, signal) => trimVideo(c.blob, 0, dur(), { onProgress, signal, mime: type }));
     if (blob) save(blob, ext);
@@ -244,6 +256,7 @@ function setupCut(player) {
   $('expMp4').addEventListener('click', () => exportAs('video/mp4', 'mp4'));
   $('expWebm').addEventListener('click', () => exportAs('video/webm', 'webm'));
   $('gifExport').addEventListener('click', async () => {
+    await askFolder();
     const gif = await run((onProgress, signal) => makeGif(c.blob, 0, dur(), { onProgress, signal }));
     if (gif) save(gif, 'gif');
   });

@@ -82,12 +82,13 @@ async function uniqueFile(dir, name) {
  * interactive = true seulement dans un clic : Chrome peut alors redemander l'accès au dossier.
  * Renvoie { where } en cas de succès, ou { needsAccess: true } si l'accès au dossier doit être redonné par un clic.
  */
-export async function saveToComputer(c, { interactive = false } = {}) {
+export async function saveToComputer(c, { interactive = false, fallback = false } = {}) {
   const conf = saveConf();
   if (conf.mode === 'folder') {
     const st = await folderAccess(interactive);
     if (st === 'missing') return downloadsSave(c, conf);
-    if (st !== 'granted') return { needsAccess: true, folderName: conf.folderName };
+    // fallback : accès au dossier perdu (clic trop ancien après une conversion) → Téléchargements.
+    if (st !== 'granted') return fallback ? downloadsSave(c, conf) : { needsAccess: true, folderName: conf.folderName };
     const dir = await getFolderHandle();
     const fh = await uniqueFile(dir, baseName(c));
     const w = await fh.createWritable();

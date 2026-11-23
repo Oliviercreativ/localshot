@@ -181,3 +181,9 @@ kbd { display: inline-block; min-width: 22px; text-align: center; padding: 2px 6
 .thumb img { background: #eef0f3; }
 .restore-box { margin: 18px auto 26px; max-width: 520px; line-height: 1.7; }
 .restore-box .btn { margin-top: 8px; }
+
+/* Menu « Exporter » : s'ouvre sous le bouton */
+.menu-wrap { position: relative; }
+.cut-panel.menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; width: min(400px, 92vw); margin: 0; box-shadow: 0 14px 40px rgba(15,23,42,.18); }
+.cut-panel.menu .hint { margin: 0; font-size: 12px; line-height: 1.45; }
+.cut-panel.menu progress[hidden], .cut-panel.menu .btn[hidden] { display: none; }
