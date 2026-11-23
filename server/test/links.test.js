@@ -151,3 +151,13 @@ test('chiffré de bout en bout : accepté, titre jamais stocké, servi tel quel'
   const bad = await fetch(`${ls.base}/api/captures`, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/vnd.localshot.enc' }, body: Buffer.from('pas chiffré du tout') });
   assert.strictEqual(bad.status, 400);
 });
+
+test('adresse du visiteur : X-Forwarded-For inventé ignoré hors proxy, dernier saut seulement derrière un proxy', async (t) => {
+  const { ls, id, patch } = await setup(t);
+  await patch({ password: 'bon-mot-de-passe' });
+  // Le test parle en local (comme tailscale serve) : seul le dernier saut compte, le visiteur ne choisit pas sa clé de blocage.
+  const unlock = (xff) => fetch(`${ls.base}/api/captures/${id}/unlock`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': xff }, body: JSON.stringify({ password: 'faux' }) });
+  for (let i = 0; i < 6; i++) await unlock(`${i}.${i}.${i}.${i}, 100.64.0.7`);
+  assert.strictEqual((await unlock('9.9.9.9, 100.64.0.7')).status, 429, 'changer le début de X-Forwarded-For ne contourne pas le blocage');
+  assert.strictEqual((await unlock('100.64.0.8')).status, 401, 'une autre adresse réelle n\'est pas bloquée');
+});

@@ -98,7 +98,18 @@ async function checkPassword(pw, stored) {
 }
 // Essais de mot de passe : 5 erreurs par lien et par adresse, puis attente croissante (jusqu'à 1 h).
 // 50 erreurs sur un même lien, toutes adresses confondues, le bloquent 1 h aussi.
-const failures = new Map(); // clé -> { n, until }
+const failures = new Map(); // adresse -> { n, until } (borné)
+const linkFailures = new Map(); // lien -> nombre d'erreurs (jamais évincé : borné par le nombre de liens)
+// Adresse du visiteur. X-Forwarded-For n'est lu que si la requête vient d'un proxy de confiance
+// (tailscale serve / proxy local, ou LOCALSHOT_TRUST_PROXY=1 derrière un proxy Docker), et seul
+// le dernier saut, ajouté par ce proxy, compte : un visiteur ne peut pas s'inventer une adresse.
+const TRUST_PROXY = process.env.LOCALSHOT_TRUST_PROXY === '1';
+function clientAddr(req) {
+  const a = req.socket.remoteAddress || '';
+  const fromProxy = TRUST_PROXY || ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(a);
+  const xff = String(req.headers['x-forwarded-for'] || '').split(',').map((x) => x.trim()).filter(Boolean);
+  return fromProxy && xff.length ? xff[xff.length - 1] : a;
+}
 function blockedFor(key) {
   const f = failures.get(key);
   return f && f.until > Date.now() ? Math.ceil((f.until - Date.now()) / 1000) : 0;
@@ -108,6 +119,7 @@ function fail(key, free, max) {
   f.n += 1;
   if (f.n > free) f.until = Date.now() + Math.min(3600_000, 30_000 * 2 ** Math.min(7, f.n - free - 1));
   if (f.n >= max) f.until = Date.now() + 3600_000;
+  failures.delete(key); // réinséré en fin : l'éviction retire d'abord les entrées les plus anciennes
   failures.set(key, f);
   if (failures.size > 10_000) failures.delete(failures.keys().next().value);
 }
@@ -447,12 +459,14 @@ const server = http.createServer(async (req, res) => {
       if (!c.password) return json(res, 204);
       let body = {};
       try { body = JSON.parse((await readBody(req, 2000)).toString('utf8') || '{}'); } catch { return json(res, 400, { error: 'JSON invalide' }); }
-      const ipKey = `${c.id}|${req.socket.remoteAddress}|${req.headers['x-forwarded-for'] || ''}`;
-      const wait = Math.max(blockedFor(ipKey), blockedFor(c.id));
+      const ipKey = `${c.id}|${clientAddr(req)}`;
+      const wait = blockedFor(ipKey);
       if (wait) return send(res, 429, JSON.stringify({ error: `Trop d'essais : réessayez dans ${Math.ceil(wait / 60)} min` }), 'application/json; charset=utf-8', { 'Retry-After': String(wait) });
+      // Lien très attaqué (toutes adresses confondues) : chaque essai est ralenti, mais le bon mot de passe passe toujours.
+      if ((linkFailures.get(c.id) || 0) >= 50) await new Promise((r) => setTimeout(r, 3000));
       if (typeof body.password !== 'string' || !(await checkPassword(body.password, c.password))) {
         fail(ipKey, 5, Infinity);
-        fail(c.id, 50, 50);
+        linkFailures.set(c.id, (linkFailures.get(c.id) || 0) + 1);
         await new Promise((r) => setTimeout(r, 800)); // ralentit les essais au hasard
         return json(res, 401, { error: 'Mot de passe incorrect' });
       }
@@ -466,7 +480,7 @@ const server = http.createServer(async (req, res) => {
       if (!c || (!local && (expired(c) || !unlocked(req, c)))) return json(res, 404, { error: 'Introuvable' });
       if (method === 'POST' && !m[2]) {
         if (c.allowComments === false && !local) return json(res, 403, { error: 'Commentaires désactivés' });
-        const ipKey = `cm|${req.socket.remoteAddress}|${req.headers['x-forwarded-for'] || ''}`;
+        const ipKey = `cm|${clientAddr(req)}`;
         if (blockedFor(ipKey)) return json(res, 429, { error: 'Trop de commentaires : patientez quelques minutes' });
         let body = {};
         try { body = JSON.parse((await readBody(req, 8000)).toString('utf8') || '{}'); } catch { return json(res, 400, { error: 'JSON invalide' }); }

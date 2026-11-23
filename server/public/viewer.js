@@ -41,6 +41,7 @@ if (!c) {
   if (c.kind === 'enc') {
     const key = keyFromHash(location.hash);
     const fail = (title, msg) => {
+      document.querySelector('.stage').classList.remove('is-loading');
       document.querySelector('.stage').replaceChildren(h('div', { class: 'center-msg dark' }, h('h1', {}, title), h('p', {}, msg)));
     };
     if (!key) fail('Lien incomplet', 'La clé de déchiffrement manque à la fin du lien (#k=…). Demandez le lien complet.');
@@ -58,12 +59,13 @@ if (!c) {
   document.title = `${c.title} — LocalShot`;
   const img = $('img');
   if (isVideo(c)) {
-    const player = createPlayer({ src: c.decrypted || fileUrl(c), poster: thumbUrl(c) || undefined, duration: c.duration, captions: c.captions, noDownload: !c.canEdit && c.allowDownload === false });
+    const player = createPlayer({ src: c.decrypted || fileUrl(c), poster: thumbUrl(c) || undefined, duration: c.duration, width: c.width, height: c.height, captions: c.captions, noDownload: !c.canEdit && c.allowDownload === false });
     img.replaceWith(player);
+    $('stage').classList.remove('is-loading');
     if (c.captions?.length) renderTranscript($('transcript'), c.captions, player);
     player.focus({ preventScroll: true });
   } else if (img && c.kind !== 'enc') {
-    img.src = c.decrypted || fileUrl(c);
+    showImage(img, c.decrypted || fileUrl(c), c.width, c.height);
     img.addEventListener('click', () => $('stage').classList.toggle('zoomed'));
   }
 
@@ -129,5 +131,21 @@ if (!c) {
     const r = await fetch(`/api/captures/${id}`, { method: 'DELETE' });
     if (r.ok) location.href = '/';
     else toast('Suppression impossible', 'error');
+  });
+}
+
+// Affiche une image une fois prête (décodée), avec la place réservée d'avance : pas d'icône cassée ni de saut.
+function showImage(img, src, w, h) {
+  const stage = document.getElementById('stage');
+  stage.classList.add('is-loading');
+  if (w && h) { img.width = w; img.height = h; }
+  img.decoding = 'async';
+  img.fetchPriority = 'high';
+  img.hidden = false;
+  img.src = src;
+  const done = () => stage.classList.remove('is-loading');
+  img.decode().then(done, () => {
+    done();
+    if (!img.complete || !img.naturalWidth) img.replaceWith(Object.assign(document.createElement('p'), { className: 'center-msg dark', textContent: 'Image indisponible.' }));
   });
 }

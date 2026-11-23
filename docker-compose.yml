@@ -9,6 +9,8 @@ services:
     environment:
       LOCALSHOT_HOST: 0.0.0.0
       LOCALSHOT_DATA: /data
+      # Le port n'est ouvert qu'à cette machine : seul le proxy HTTPS local y accède, on lui fait confiance pour X-Forwarded-For.
+      LOCALSHOT_TRUST_PROXY: "1"
     ports:
       - "127.0.0.1:4777:4777"
     volumes:

@@ -57,6 +57,7 @@ kbd { display: inline-block; min-width: 22px; text-align: center; padding: 2px 6
 
 .viewer { max-width: 1400px; margin: 0 auto; padding: 24px; }
 .stage { background: #1e293b; border-radius: var(--radius); padding: 16px; display: flex; justify-content: center; max-height: 78vh; overflow: auto; }
+.stage:has(> .lsp) { max-height: none; overflow: visible; display: block; }
 .stage img { max-width: 100%; height: auto; align-self: flex-start; cursor: zoom-in; box-shadow: 0 6px 24px rgba(0,0,0,.35); }
 .stage.zoomed { max-height: none; justify-content: flex-start; }
 .stage.zoomed img { max-width: none; cursor: zoom-out; }
@@ -169,3 +170,12 @@ kbd { display: inline-block; min-width: 22px; text-align: center; padding: 2px 6
 .cm-at { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); white-space: nowrap; }
 .e2e-opt { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
 .e2e-opt:has(+ #share[hidden]) { display: none; }
+
+/* Chargement d'une capture : indicateur au lieu d'une icône d'image cassée */
+.stage.is-loading { min-height: 240px; align-items: center; }
+.loader { display: none; width: 38px; height: 38px; border-radius: 50%; border: 4px solid rgba(255,255,255,.18); border-top-color: var(--accent); animation: ls-spin .8s linear infinite; align-self: center; }
+.stage.is-loading .loader { display: block; }
+.stage.is-loading img { position: absolute; opacity: 0; }
+.stage img { transition: opacity .2s; }
+@keyframes ls-spin { to { transform: rotate(360deg); } }
+.thumb img { background: #eef0f3; }

@@ -145,7 +145,7 @@ const DICT = {
   'Ajouté': 'Added', 'Capture supprimée': 'Capture deleted', 'Formats acceptés : PNG, MP4, WebM': 'Accepted formats: PNG, MP4, WebM',
   'Impossible de déchiffrer': 'Cannot decrypt', 'Lien incomplet': 'Incomplete link', 'Contenu chiffré': 'Encrypted content',
   'La clé de déchiffrement manque à la fin du lien (#k=…). Demandez le lien complet.': 'The decryption key is missing at the end of the link (#k=…). Ask for the full link.',
-  'Déposez pour ajouter à LocalShot': 'Drop to add to LocalShot',
+  'Déposez pour ajouter à LocalShot': 'Drop to add to LocalShot', 'Chargement…': 'Loading…', 'Image indisponible.': 'Image unavailable.',
 };
 
 // Messages avec des parties variables.
@@ -181,6 +181,7 @@ const PATTERNS = [
   [/^Envoi de « (.+) »…$/, (m) => `Uploading “${m[1]}”…`],
   [/^(.+) · chiffré de bout en bout · (.+)$/, (m) => `${m[1]} · end-to-end encrypted · ${m[2]}`],
   [/^(.*) · expire le (.+)$/, (m) => `${m[1]} · expires ${m[2]}`],
+  [/^Ajouter (\d+) fichiers? reçus? à LocalShot \?\n\n([\s\S]*)$/, (m) => `Add ${m[1]} received file${m[1] > 1 ? 's' : ''} to LocalShot?\n\n${m[2]}`],
   [/^Segment : (.+)$/, (m) => `Segment: ${m[1]}`],
   [/^Vidéo (\d+:\d+)$/, (m) => `Video ${m[1]}`],
   [/^Vidéo du (.+)$/, (m) => `Video of ${m[1]}`],

@@ -21,9 +21,9 @@ function card(c) {
     c.kind === 'enc'
       ? h('div', { class: 'thumb is-enc' }, h('span', {}, '🔒'))
       : isVideo(c)
-      ? h('div', { class: 'thumb is-video' }, thumbUrl(c) ? h('img', { src: thumbUrl(c), decoding: 'async', alt: '' }) : h('video', { src: `${fileUrl(c)}#t=0.5`, preload: 'metadata', muted: '', playsinline: '' }),
+      ? h('div', { class: 'thumb is-video' }, thumbUrl(c) ? h('img', { src: thumbUrl(c), decoding: 'async', loading: 'lazy', alt: '' }) : h('video', { src: `${fileUrl(c)}#t=0.5`, preload: 'metadata', muted: '', playsinline: '' }),
           h('span', { class: 'play' }, '▶'), h('span', { class: 'dur' }, fmtDuration(c.duration)))
-      : h('div', { class: 'thumb' }, h('img', { src: fileUrl(c), decoding: 'async', alt: '' })),
+      : h('div', { class: 'thumb' }, h('img', { src: thumbUrl(c) || fileUrl(c), decoding: 'async', loading: 'lazy', alt: '' })),
     h('div', { class: 'card-body' },
       h('div', { class: 'card-title' }, c.title),
       h('div', { class: 'card-meta' }, `${fmtDate(c.createdAt)} · ${c.kind === 'enc' ? 'chiffré de bout en bout' : isVideo(c) ? `Vidéo ${fmtDuration(c.duration)}` : `${c.width}×${c.height}`} · ${c.views || 0} vue${c.views > 1 ? "s" : ""}${c.hasPassword ? " · 🔒" : ""}${c.expiresAt ? " · expire le " + fmtDate(c.expiresAt) : ""}`)));
@@ -88,7 +88,8 @@ async function receiveShared() {
     files.push(new File([await r.blob()], decodeURIComponent(r.headers.get('X-Name') || 'capture'), { type: r.headers.get('Content-Type') || '' }));
     await box.delete(req);
   }
-  if (files.length) uploadFiles(files);
+  // Toujours demander : des fichiers reçus ne partent jamais sur le serveur sans accord explicite.
+  if (files.length && confirm(`Ajouter ${files.length} fichier${files.length > 1 ? 's' : ''} reçu${files.length > 1 ? 's' : ''} à LocalShot ?\n\n${files.map((f) => `• ${f.name}`).join('\n')}`)) uploadFiles(files);
 }
 document.getElementById('upload').addEventListener('change', (e) => { uploadFiles(e.target.files); e.target.value = ''; });
 document.addEventListener('dragover', (e) => { e.preventDefault(); document.body.classList.add('dropping'); });

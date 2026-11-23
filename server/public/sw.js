@@ -12,6 +12,12 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   // « Partager vers LocalShot » : les fichiers sont mis de côté, puis la galerie les envoie au serveur.
   if (e.request.method === 'POST' && url.pathname === '/share-target') {
+    // Un vrai partage système n'a pas de page d'origine ; un formulaire d'un autre site, si.
+    const ref = e.request.referrer;
+    if (ref && ref !== 'about:client' && new URL(ref).origin !== location.origin) {
+      e.respondWith(Response.redirect('/', 303));
+      return;
+    }
     e.respondWith((async () => {
       const fd = await e.request.formData();
       const box = await caches.open('localshot-share');

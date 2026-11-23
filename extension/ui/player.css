@@ -1,14 +1,16 @@
 /* Lecteur vidéo LocalShot. Copie identique dans extension/ui/ et server/public/ (vérifié par npm test). */
 .lsp {
   --lsp-accent: #f97316; --lsp-accent-d: #ea580c;
-  position: relative; display: block; width: fit-content; max-width: 100%; margin: 0 auto;
+  /* Toute la largeur disponible, sans dépasser la hauteur de l'écran ; format fixé d'avance : la taille ne saute pas au chargement. */
+  position: relative; display: block; margin: 0 auto; aspect-ratio: var(--ar, 16 / 9);
+  width: min(100%, calc((100vh - 220px) * var(--ar, 1.7778)));
   border-radius: 12px; overflow: hidden; background: #000; outline: none;
   box-shadow: 0 10px 40px rgba(0,0,0,.35); font: 13px/1 -apple-system, BlinkMacSystemFont, system-ui, sans-serif; color: #fff;
   user-select: none; -webkit-user-select: none;
 }
 .lsp:focus-visible { box-shadow: 0 0 0 3px var(--lsp-accent), 0 10px 40px rgba(0,0,0,.35); }
-.lsp-video { display: block; max-width: 100%; max-height: calc(78vh - 32px); cursor: pointer; background: #000; }
-.lsp.is-full { width: 100%; height: 100%; border-radius: 0; display: flex; align-items: center; justify-content: center; }
+.lsp-video { display: block; width: 100%; height: 100%; object-fit: contain; cursor: pointer; background: #000; }
+.lsp.is-full { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; display: flex; align-items: center; justify-content: center; }
 .lsp.is-full .lsp-video { max-height: 100vh; width: 100%; height: 100%; object-fit: contain; }
 .lsp.is-idle { cursor: none; }
 .lsp.is-idle .lsp-video { cursor: none; }

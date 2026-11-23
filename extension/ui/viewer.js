@@ -19,8 +19,9 @@ if (!c) {
   document.querySelector('.actions').hidden = true;
 } else {
   if (isVideo(c)) {
-    const player = createPlayer({ src: URL.createObjectURL(c.blob), poster: c.thumb && URL.createObjectURL(c.thumb), duration: c.duration });
+    const player = createPlayer({ src: URL.createObjectURL(c.blob), poster: c.thumb && URL.createObjectURL(c.thumb), duration: c.duration, width: c.width, height: c.height });
     $('img').replaceWith(player);
+    $('stage').classList.remove('is-loading');
     $('annotate').hidden = true;
     setupCut(player);
     setupSubs(player);
@@ -28,7 +29,7 @@ if (!c) {
     $('copyImg').hidden = true;
   } else {
     const img = $('img');
-    img.src = URL.createObjectURL(c.blob);
+    showImage(img, URL.createObjectURL(c.blob), c.width, c.height);
     img.addEventListener('click', () => $('stage').classList.toggle('zoomed'));
 
     // ---------- Annotations (flèches, texte, flou…) ----------
@@ -36,7 +37,7 @@ if (!c) {
       const bmp = await createImageBitmap(blob);
       c = await updateCapture(id, { blob, size: blob.size, width: bmp.width, height: bmp.height, thumb: await makeThumb(bmp), savedAt: null, ...patch });
       URL.revokeObjectURL(img.src);
-      img.src = URL.createObjectURL(c.blob);
+      showImage(img, URL.createObjectURL(c.blob), c.width, c.height);
       $('restore').hidden = !c.original;
       if (c.sharedId) toast('Le lien partagé montre encore l\'ancienne version : arrêtez puis relancez le partage.');
       autoSave(false);
@@ -315,4 +316,20 @@ function setupSubs(player) {
   $('trDel').addEventListener('click', async () => { if (confirm('Supprimer les sous-titres ?')) await store([]); });
   player.setCaptions(c.captions || []);
   show();
+}
+
+// Affiche une image une fois prête (décodée), avec la place réservée d'avance : pas d'icône cassée ni de saut.
+function showImage(img, src, w, h) {
+  const stage = document.getElementById('stage');
+  stage.classList.add('is-loading');
+  if (w && h) { img.width = w; img.height = h; }
+  img.decoding = 'async';
+  img.fetchPriority = 'high';
+  img.hidden = false;
+  img.src = src;
+  const done = () => stage.classList.remove('is-loading');
+  img.decode().then(done, () => {
+    done();
+    if (!img.complete || !img.naturalWidth) img.replaceWith(Object.assign(document.createElement('p'), { className: 'center-msg dark', textContent: 'Image indisponible.' }));
+  });
 }

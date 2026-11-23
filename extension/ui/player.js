@@ -37,11 +37,15 @@ function iconBtn(cls, label, icon) {
 
 /**
  * Crée le lecteur. Renvoie l'élément à insérer dans la page ; la balise <video> est dans `.video`.
- * @param {{ src: string, poster?: string, duration?: number, noDownload?: boolean, captions?: {start:number,end:number,text:string}[] }} opts
+ * @param {{ src: string, poster?: string, duration?: number, width?: number, height?: number, noDownload?: boolean, captions?: {start:number,end:number,text:string}[] }} opts
  */
-export function createPlayer({ src, poster, duration: knownDuration, noDownload = false, captions = null }) {
+export function createPlayer({ src, poster, duration: knownDuration, width = 0, height = 0, noDownload = false, captions = null }) {
   const root = el('div', 'lsp is-paused', { tabindex: '0' });
   const video = el('video', 'lsp-video', { playsinline: '', preload: 'metadata' });
+  // Format de la vidéo connu d'avance (sinon lu dès les métadonnées) : le lecteur garde sa taille.
+  const setRatio = (w, h) => { if (w > 0 && h > 0) root.style.setProperty('--ar', String(w / h)); };
+  setRatio(width, height);
+  video.addEventListener('loadedmetadata', () => setRatio(video.videoWidth, video.videoHeight));
   video.src = src;
   if (poster) video.poster = poster;
   if (noDownload) {

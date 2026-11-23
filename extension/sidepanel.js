@@ -73,7 +73,7 @@ function row(c) {
   const src = c.thumb || (!isVideo(c) && c.blob);
   const url = src ? URL.createObjectURL(src) : null;
   if (url) urls.push(url);
-  const thumb = h('div', { class: 'thumb' }, url ? h('img', { src: url, alt: '', decoding: 'async' }) : '');
+  const thumb = h('div', { class: 'thumb' }, url ? h('img', { src: url, alt: '', decoding: 'async', loading: 'lazy' }) : '');
   if (isVideo(c)) thumb.append(h('span', { class: 'dur' }, `▶ ${fmtDuration(c.duration)}`));
   const meta = `${fmtDate(c.createdAt)}${c.sharedId ? ' · partagée' : ''}`;
   const btn = h('button', { class: 'item', title: c.title }, thumb,

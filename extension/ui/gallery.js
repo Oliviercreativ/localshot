@@ -15,7 +15,7 @@ const thumbUrl = (c) => {
 
 function thumbBox(c) {
   const url = thumbUrl(c);
-  const box = h('div', { class: 'thumb' + (isVideo(c) ? ' is-video' : '') }, url ? h('img', { src: url, decoding: 'async', alt: '' }) : '');
+  const box = h('div', { class: 'thumb' + (isVideo(c) ? ' is-video' : '') }, url ? h('img', { src: url, decoding: 'async', loading: 'lazy', alt: '' }) : '');
   if (isVideo(c)) box.append(h('span', { class: 'play' }, '▶'), h('span', { class: 'dur' }, fmtDuration(c.duration)));
   return box;
 }
