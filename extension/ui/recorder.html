@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="app.css">
   <link rel="stylesheet" href="recorder.css">
   <script type="module" src="i18n.js"></script>
+  <script type="module" src="icons.js"></script>
 </head>
 <body class="rec">
   <header class="rec-head">
@@ -22,22 +23,21 @@
     <label class="opt"><input type="checkbox" id="sys"><span><b>Son de l'onglet</b><small>Le son de la page enregistrée (onglet Chrome uniquement)</small></span></label>
     <label class="opt"><input type="checkbox" id="clicks"><span><b>Effet de clic</b><small>Un cercle orange à chaque clic dans les pages Chrome</small></span></label>
     <video id="camPreview" class="cam-preview" autoplay muted playsinline hidden></video>
-    <button id="start" class="btn primary big">● Choisir quoi enregistrer</button>
+    <button id="start" class="btn primary big" data-icon="record"><span>Choisir quoi enregistrer</span></button>
     <p class="hint">Chrome vous demandera quoi enregistrer. Choisissez « Onglet Chrome » pour filmer seulement la page, sans les onglets ni le panneau latéral. Rien n'est envoyé sur Internet.</p>
   </section>
 
-  <section id="live" hidden>
-    <div id="count" class="count"></div>
-    <div id="timer" class="timer">0:00</div>
-    <div id="liveState" class="muted">Enregistrement en cours</div>
+  <section id="live" class="player" hidden>
+    <div class="pl-top"><i id="liveDot" class="pl-dot"></i><span id="liveState">Enregistrement en cours</span><span id="timer" class="timer" role="timer">0:00</span></div>
+    <div id="count" class="count" hidden></div>
     <div class="live-actions">
-      <button id="go" class="btn primary" hidden>● Démarrer</button>
-      <button id="pause" class="btn">❚❚ Pause</button>
-      <button id="stop" class="btn primary">■ Terminer</button>
+      <button id="go" class="pl-btn go" hidden data-icon="record"><span>Démarrer</span></button>
+      <button id="pause" class="pl-btn" data-icon="pause"><span>Pause</span></button>
+      <button id="stop" class="pl-btn stop" data-icon="stop"><span>Terminer</span></button>
+      <button id="cancel" class="pl-btn" data-icon="x"><span>Annuler</span></button>
     </div>
-    <button id="float" class="btn small" hidden>↗ Barre flottante</button>
-    <button id="cancel" class="btn danger small">Annuler sans enregistrer</button>
-    <p id="liveHint" class="hint"></p>
+    <button id="float" class="pl-link" hidden data-icon="external"><span>Barre flottante</span></button>
+    <p id="liveHint" class="pl-hint"></p>
   </section>
 
   <section id="saving" hidden>

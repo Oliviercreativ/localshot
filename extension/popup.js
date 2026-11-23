@@ -1,5 +1,6 @@
 import { listCaptures } from './db.js';
 import { openRecorder, recorderStatus } from './recorder-launch.js';
+import { mountRecOptions } from './ui/recopts.js';
 
 document.querySelectorAll('[data-mode]').forEach((btn) =>
   btn.addEventListener('click', async () => {
@@ -22,19 +23,35 @@ document.getElementById('panel').addEventListener('click', () => {
   chrome.sidePanel.open({ windowId }).then(() => window.close(), (e) => console.error('LocalShot panneau :', e));
 });
 
-// Vidéo : le bouton est branché tout de suite ; l'état de l'enregistreur est lu en parallèle.
+// Vidéo : le bouton affiche les options ici même ; « Choisir quoi enregistrer » ouvre le choix de Chrome.
+// Pendant un enregistrement, il le termine.
 const recBtn = document.getElementById('record');
+const recPanel = document.getElementById('recPanel');
 let live = false;
+const recErr = (m) => { const e = document.getElementById('recErr'); e.textContent = m; e.hidden = !m; };
+const recInputs = mountRecOptions(document.getElementById('recOpts'), { onError: recErr, panel: true });
 recBtn.addEventListener('click', async () => {
+  if (!live) {
+    recPanel.hidden = !recPanel.hidden;
+    recBtn.setAttribute('aria-expanded', String(!recPanel.hidden));
+    if (!recPanel.hidden) document.getElementById('recGo').focus();
+    return;
+  }
   recBtn.disabled = true;
+  await chrome.runtime.sendMessage({ type: 'rec-stop' }).catch(() => {});
+  window.close();
+});
+document.getElementById('recGo').addEventListener('click', async (e) => {
+  e.currentTarget.disabled = true;
   try {
-    if (live) await chrome.runtime.sendMessage({ type: 'rec-stop' }).catch(() => {});
-    else await openRecorder();
+    // Chrome n'ouvre le panneau latéral que directement après le clic : avant toute attente.
+    if (recInputs.panel.checked && chrome.sidePanel) await chrome.sidePanel.open({ windowId }).catch((err) => console.warn('LocalShot panneau :', err));
+    await openRecorder({ auto: true });
     window.close();
-  } catch (e) {
-    console.error('LocalShot vidéo :', e);
-    recBtn.disabled = false;
-    document.getElementById('recLabel').textContent = `Erreur : ${e.message}`;
+  } catch (err) {
+    console.error('LocalShot vidéo :', err);
+    e.currentTarget.disabled = false;
+    recErr(`Erreur : ${err.message}`);
   }
 });
 recorderStatus().then((rec) => {

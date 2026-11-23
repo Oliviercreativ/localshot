@@ -9,10 +9,11 @@
   <link rel="stylesheet" href="player.css">
   <link rel="stylesheet" href="editor.css">
   <script type="module" src="i18n.js"></script>
+  <script type="module" src="icons.js"></script>
 </head>
 <body>
   <header class="topbar">
-    <a class="back" href="gallery.html" aria-label="Retour à la galerie">←</a>
+    <a class="back" href="gallery.html" aria-label="Retour à la galerie" data-icon="back"></a>
     <a class="brand" href="gallery.html"><img src="../icons/icon-128.png" alt=""><span>LocalShot</span></a>
     <span class="pill">100&nbsp;% local</span>
     <div class="spacer"></div>
@@ -20,7 +21,7 @@
       <button id="annotate" class="btn">Annoter</button>
       <a id="studio" class="btn primary" hidden>Studio</a>
       <div class="menu-wrap">
-        <button id="cut" class="btn" aria-haspopup="dialog" aria-expanded="false" hidden>Exporter ▾</button>
+        <button id="cut" class="btn" aria-haspopup="dialog" aria-expanded="false" hidden data-icon="download"><span>Exporter</span></button>
         <div id="cutPanel" class="cut-panel menu" role="dialog" aria-label="Exporter la vidéo" hidden>
       <div class="cut-row">
         <b>Exporter la vidéo</b>
@@ -65,7 +66,7 @@
       <input id="title" class="title-input" maxlength="300" aria-label="Titre de la capture">
       <div class="meta">
         <span id="meta" class="muted"></span>
-        <a id="source" class="source" target="_blank" rel="noopener noreferrer" hidden>URL source ↗</a>
+        <a id="source" class="source" target="_blank" rel="noopener noreferrer" hidden data-icon="external"><span>URL source</span></a>
         <button id="restore" class="link-btn" hidden>Revenir à l'original</button>
       </div>
       <div id="shareBox" class="share" hidden>

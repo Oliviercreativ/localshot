@@ -1,6 +1,7 @@
 // Éditeur d'annotations : flèches, cadres, texte, étapes numérotées, flou et masquage.
 // Tout se passe dans la page : l'image ne quitte pas le navigateur.
 // openEditor(blob) → Promise<Blob | null> (null si l'utilisateur annule).
+import { svg, setIcon } from './icons.js';
 
 const COLORS = ['#f97316', '#dc2626', '#2563eb', '#16a34a', '#facc15', '#0f172a', '#ffffff'];
 const TOOLS = [
@@ -61,11 +62,13 @@ export async function openEditor(blob) {
     sizes.append(b);
   }
   const undoB = el('button', 'ed-btn', { type: 'button', title: 'Annuler (⌘Z)' });
-  undoB.textContent = '↶';
+  undoB.append(svg('undo'));
+  undoB.setAttribute('aria-label', 'Annuler');
   const redoB = el('button', 'ed-btn', { type: 'button', title: 'Rétablir (⇧⌘Z)' });
-  redoB.textContent = '↷';
+  redoB.append(svg('redo'));
+  redoB.setAttribute('aria-label', 'Rétablir');
   const delB = el('button', 'ed-btn', { type: 'button', title: 'Supprimer l\'élément sélectionné (⌫)' });
-  delB.textContent = 'Supprimer';
+  setIcon(delB, 'trash', 'Supprimer');
   const cancelB = el('button', 'btn', { type: 'button' });
   cancelB.textContent = 'Annuler';
   const saveB = el('button', 'btn primary', { type: 'button' });

@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <link rel="stylesheet" href="popup.css">
   <script type="module" src="ui/i18n.js"></script>
+  <script type="module" src="ui/icons.js"></script>
 </head>
 <body>
   <header>
@@ -27,9 +28,16 @@
     </button>
   </div>
 
-  <button id="record" class="record">
+  <button id="record" class="record" aria-expanded="false" aria-controls="recPanel">
     <i class="dot"></i><span id="recLabel">Enregistrer une vidéo</span><kbd>⌥⇧R</kbd>
   </button>
+
+  <section id="recPanel" class="rec-panel" hidden aria-label="Options de la vidéo">
+    <div id="recOpts" class="ro-opts"></div>
+    <button id="recGo" type="button" class="rec-go" data-icon="record"><span>Choisir quoi enregistrer</span></button>
+    <p class="rec-hint">Chrome vous demandera quoi enregistrer. Choisissez « Onglet Chrome » pour filmer seulement la page. Rien n'est envoyé sur Internet.</p>
+    <p id="recErr" class="rec-err" role="alert" hidden></p>
+  </section>
 
   <div class="open">
     <button id="gallery"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Ouvrir la galerie</button>

@@ -34,7 +34,7 @@ async function test() {
     const h = await (await api('/api/health', { signal: AbortSignal.timeout(5000) })).json();
     if (h.app !== 'localshot') return status('Ce serveur ne semble pas être LocalShot.', false);
     const r = await api('/api/captures', { signal: AbortSignal.timeout(5000) });
-    if (r.ok) return status(`Connecté ✓ ${(await r.json()).length} élément(s) partagé(s) sur ce serveur.`, true);
+    if (r.ok) return status(`Connecté : ${(await r.json()).length} élément(s) partagé(s) sur ce serveur.`, true);
     if (r.status === 401) return status('Serveur joignable, mais la clé d\'accès est incorrecte.', false);
     return status('Serveur joignable, mais il refuse l\'accès (clé requise ?).', false);
   } catch {

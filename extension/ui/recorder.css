@@ -1,4 +1,4 @@
-body.rec { min-height: 0; padding: 16px 18px 20px; background: #fff; font-size: 14px; }
+body.rec { min-height: 0; max-width: 420px; margin: 0 auto; padding: 16px 18px 20px; background: #fff; font-size: 14px; }
 .rec-head { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 16px; }
 .rec-head .pill { margin-left: auto; }
 .opt { display: flex; gap: 12px; align-items: flex-start; padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; cursor: pointer; }
@@ -16,3 +16,23 @@ body.rec { min-height: 0; padding: 16px 18px 20px; background: #fff; font-size: 
 .live-actions .btn { flex: 1; justify-content: center; padding: 12px; }
 .error { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #fef2f2; color: var(--danger); font-size: 13px; }
 html:has(body.rec) { background: #fff; }
+
+/* Lecteur : même aspect que dans le panneau latéral et la barre flottante */
+.player { text-align: left !important; padding: 14px !important; border-radius: 16px; background: #0f172a; color: #fff; }
+.pl-top { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.pl-dot { width: 10px; height: 10px; border-radius: 50%; background: #94a3b8; flex: none; }
+.pl-dot.on { background: #ef4444; animation: pl-blink 1.2s steps(2, start) infinite; }
+@keyframes pl-blink { to { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .pl-dot.on { animation: none; } }
+.player .timer { margin: 0 0 0 auto; font: 700 22px/1 ui-monospace, Menlo, monospace; }
+.player .count { margin: 10px 0 0; text-align: center; }
+.player .live-actions { display: flex; gap: 6px; margin-top: 12px; }
+.pl-btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; padding: 9px 6px; border: 0; border-radius: 9px; background: rgba(255,255,255,.12); color: #fff; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.pl-btn:hover { background: rgba(255,255,255,.22); }
+.pl-btn.go { background: #f97316; } .pl-btn.go:hover { background: #ea580c; }
+.pl-btn.stop { background: #dc2626; } .pl-btn.stop:hover { background: #b91c1c; }
+.pl-btn:focus-visible, .pl-link:focus-visible { outline: 2px solid #f97316; outline-offset: 2px; }
+.pl-link { display: flex; align-items: center; margin: 12px auto 0; border: 0; background: none; color: #fdba74; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
+.pl-hint { margin: 10px 0 0; font-size: 12px; color: #cbd5e1; }
+.pl-hint:empty { display: none; }
+.player [hidden] { display: none !important; }

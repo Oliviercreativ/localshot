@@ -8,18 +8,19 @@
   <link rel="stylesheet" href="app.css">
   <link rel="stylesheet" href="studio.css">
   <script type="module" src="i18n.js"></script>
+  <script type="module" src="icons.js"></script>
 </head>
 <body class="studio">
   <header class="st-top">
-    <a id="back" class="back" href="#" title="Retour à la vidéo" aria-label="Retour à la vidéo">←</a>
+    <a id="back" class="back" href="#" title="Retour à la vidéo" aria-label="Retour à la vidéo" data-icon="back"></a>
     <img src="../icons/icon-32.png" alt="" width="24" height="24">
     <strong>Studio</strong>
     <span id="name" class="st-name muted"></span>
     <span class="spacer"></span>
-    <button id="undo" class="btn" type="button" title="Annuler (⌘Z)" aria-label="Annuler (⌘Z)" disabled>↶</button>
-    <button id="redo" class="btn" type="button" title="Rétablir (⇧⌘Z)" aria-label="Rétablir (⇧⌘Z)" disabled>↷</button>
+    <button id="undo" class="btn" type="button" title="Annuler (⌘Z)" aria-label="Annuler (⌘Z)" disabled data-icon="undo"></button>
+    <button id="redo" class="btn" type="button" title="Rétablir (⇧⌘Z)" aria-label="Rétablir (⇧⌘Z)" disabled data-icon="redo"></button>
     <button id="reset" class="btn" type="button">Tout réinitialiser</button>
-    <button id="export" class="btn primary" type="button">Exporter la vidéo</button>
+    <button id="export" class="btn primary" type="button" data-icon="download"><span>Exporter la vidéo</span></button>
   </header>
 
   <main class="st-main">
@@ -29,12 +30,12 @@
         <div id="focusHint" class="st-focus-hint" hidden>Cliquez sur l'image pour choisir où zoomer</div>
       </div>
       <div class="st-transport">
-        <button id="play" class="btn" type="button" aria-label="Lecture (espace)" title="Lecture (espace)">▶</button>
+        <button id="play" class="btn" type="button" aria-label="Lecture (espace)" title="Lecture (espace)" data-icon="play"></button>
         <span id="time" class="st-time">0:00 / 0:00</span>
         <span class="spacer"></span>
-        <button id="split" class="btn" type="button" title="Couper au curseur (S)">✂ Couper ici</button>
-        <button id="addZoom" class="btn" type="button" title="Ajouter un zoom au curseur (Z)">⊕ Zoom</button>
-        <button id="shot" class="btn" type="button" title="Enregistrer l'image affichée dans la galerie (C)">📷 Capture d'écran</button>
+        <button id="split" class="btn" type="button" title="Couper au curseur (S)" data-icon="scissors"><span>Couper ici</span></button>
+        <button id="addZoom" class="btn" type="button" title="Ajouter un zoom au curseur (Z)" data-icon="zoom"><span>Zoom</span></button>
+        <button id="shot" class="btn" type="button" title="Enregistrer l'image affichée dans la galerie (C)" data-icon="camera"><span>Capture d'écran</span></button>
       </div>
     </section>
 
@@ -53,13 +54,17 @@
             </select>
           </label>
           <button id="toggleSeg" class="btn" type="button">Supprimer ce passage</button>
+          <div class="st-join-btns">
+            <button id="joinPrev" class="btn" type="button" data-icon="link"><span>Recoller au précédent</span></button>
+            <button id="joinNext" class="btn" type="button" data-icon="link"><span>Recoller au suivant</span></button>
+          </div>
         </div>
         <div id="zoomTools" hidden>
           <label class="st-field">Zoom <span id="scaleVal" class="muted"></span>
             <input id="scale" type="range" min="1.2" max="3" step="0.1">
           </label>
           <p class="muted st-small">Cliquez sur l'aperçu pour choisir la zone à agrandir.</p>
-          <button id="delZoom" class="btn danger" type="button">Supprimer ce zoom</button>
+          <button id="delZoom" class="btn danger" type="button" data-icon="trash"><span>Supprimer ce zoom</span></button>
         </div>
       </section>
 
@@ -79,6 +84,7 @@
 
       <section class="st-card st-help">
         <h2>Raccourcis</h2>
+        <p>Pour recoller deux passages, cliquez sur le rond orange de la coupe.</p>
         <p><kbd>Espace</kbd> lecture · <kbd>S</kbd> couper · <kbd>Z</kbd> zoom · <kbd>C</kbd> capture · <kbd>Suppr</kbd> supprimer · <kbd>←</kbd> <kbd>→</kbd> 1 s</p>
       </section>
     </aside>
@@ -105,7 +111,7 @@
       <h2 id="expTitle">Export de la vidéo…</h2>
       <p class="muted">La vidéo est rejouée pour être réenregistrée : comptez sa durée. Tout reste sur votre ordinateur.</p>
       <progress id="expProgress" max="1" value="0"></progress>
-      <button id="expAbort" class="btn danger" type="button">Annuler l'export</button>
+      <button id="expAbort" class="btn danger" type="button" data-icon="x"><span>Annuler l'export</span></button>
     </div>
   </div>
 

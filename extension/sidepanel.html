@@ -6,6 +6,7 @@
   <title>LocalShot</title>
   <link rel="stylesheet" href="sidepanel.css">
   <script type="module" src="ui/i18n.js"></script>
+  <script type="module" src="ui/icons.js"></script>
 </head>
 <body>
   <header>
@@ -29,9 +30,16 @@
     </button>
   </div>
 
-  <button id="record" class="record">
+  <button id="record" class="record" aria-expanded="false" aria-controls="recPanel">
     <i class="dot"></i><span id="recLabel">Enregistrer une vidéo</span><kbd>⌥⇧R</kbd>
   </button>
+
+  <section id="recPanel" class="rec-panel" hidden aria-label="Options de la vidéo">
+    <div id="recOpts" class="ro-opts"></div>
+    <button id="recGo" type="button" class="rec-go" data-icon="record"><span>Choisir quoi enregistrer</span></button>
+    <p class="rec-hint">Chrome vous demandera quoi enregistrer. Choisissez « Onglet Chrome » pour filmer seulement la page. Rien n'est envoyé sur Internet.</p>
+    <p id="recErr" class="rec-err" role="alert" hidden></p>
+  </section>
 
   <section id="recCtl" class="rec-ctl" hidden aria-label="Enregistrement vidéo">
     <div class="rc-top">
@@ -39,13 +47,13 @@
       <span id="rcTime" class="rc-time" role="timer">0:00</span>
     </div>
     <div class="rc-btns">
-      <button id="rcMain" type="button" class="rc-btn go">● Démarrer</button>
-      <button id="rcStop" type="button" class="rc-btn stop">■ Terminer</button>
-      <button id="rcCancel" type="button" class="rc-btn">✕ Annuler</button>
+      <button id="rcMain" type="button" class="rc-btn go"></button>
+      <button id="rcStop" type="button" class="rc-btn stop" data-icon="stop"><span>Terminer</span></button>
+      <button id="rcCancel" type="button" class="rc-btn"></button>
     </div>
     <div id="rcTools" class="rc-tools" hidden></div>
     <p id="rcNote" class="rc-note" role="status" hidden></p>
-    <button id="rcDetach" type="button" class="link rc-detach">↗ Détacher la barre</button>
+    <button id="rcDetach" type="button" class="link rc-detach"></button>
   </section>
 
   <div id="error" class="error" hidden></div>
@@ -64,8 +72,8 @@
   <p id="empty" class="empty" hidden>Aucune capture pour l'instant.</p>
 
   <footer>
-    <button id="gallery" class="link">Galerie complète →</button>
-    <button id="settings" class="link muted">Réglages</button>
+    <button id="gallery" class="link" data-icon="gallery"><span>Galerie complète</span></button>
+    <button id="settings" class="link muted" data-icon="settings"><span>Réglages</span></button>
   </footer>
   <script type="module" src="sidepanel.js"></script>
 </body>

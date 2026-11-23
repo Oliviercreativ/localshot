@@ -1,6 +1,7 @@
 // Commentaires horodatés d'une capture partagée (« à 1:23, changer ce bouton »).
 // Copie identique dans extension/ui/ et server/public/ (vérifié par npm test).
 // request(path, opts) appelle le serveur ; owner = vue du propriétaire (suppression possible).
+import { svg } from './icons.js';
 const fmt = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 const NAME_KEY = 'localshot-comment-name';
 
@@ -32,7 +33,7 @@ export function renderComments(box, c, { request, player = null, owner = false, 
         head.prepend(at);
       }
       if (owner) {
-        const del = el('button', { type: 'button', class: 'cm-del', title: 'Supprimer ce commentaire', 'aria-label': 'Supprimer ce commentaire' }, '✕');
+        const del = el('button', { type: 'button', class: 'cm-del', title: 'Supprimer ce commentaire', 'aria-label': 'Supprimer ce commentaire' }, svg('x'));
         del.addEventListener('click', async () => {
           if (!confirm('Supprimer ce commentaire ?')) return;
           const r = await request(`/api/captures/${encodeURIComponent(c.id)}/comments/${encodeURIComponent(m.id)}`, { method: 'DELETE' }).catch(() => null);

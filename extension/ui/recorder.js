@@ -3,6 +3,7 @@
 import { addCapture, newId } from '../db.js';
 import { EN } from './i18n.js';
 import { mountBar, ACTIVE } from './recbar.js';
+import { setIcon } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
 const MIME = [
@@ -16,10 +17,13 @@ const MIME = [
 ].find((t) => MediaRecorder.isTypeSupported(t));
 
 // ---------- Préférences ----------
-const prefs = { mic: true, sys: true, clicks: false, ...JSON.parse(localStorage.getItem('rec-prefs') || '{}') };
+// Les mêmes choix sont proposés dans le popup et le panneau latéral (recopts.js) : ils partagent ces préférences.
+const prefs = { mic: true, sys: true, clicks: false, cam: false, ...JSON.parse(localStorage.getItem('rec-prefs') || '{}') };
+const AUTO = new URLSearchParams(location.search).has('auto'); // lancé depuis le popup ou le panneau : choix de Chrome tout de suite
 $('mic').checked = prefs.mic;
 $('sys').checked = prefs.sys;
-const savePrefs = () => localStorage.setItem('rec-prefs', JSON.stringify({ mic: $('mic').checked, sys: $('sys').checked, clicks: $('clicks').checked }));
+$('cam').checked = AUTO && prefs.cam; // la caméra s'ouvre au clic sur « Choisir quoi enregistrer »
+const savePrefs = () => localStorage.setItem('rec-prefs', JSON.stringify({ mic: $('mic').checked, sys: $('sys').checked, clicks: $('clicks').checked, cam: $('cam').checked }));
 $('mic').addEventListener('change', savePrefs);
 $('sys').addEventListener('change', savePrefs);
 
@@ -172,7 +176,7 @@ async function openPip(withCam) {
   if (pip) return true;
   if (!('documentPictureInPicture' in window)) return false;
   try {
-    pip = await documentPictureInPicture.requestWindow(withCam ? { width: 240, height: 240 } : { width: 400, height: 96 });
+    pip = await documentPictureInPicture.requestWindow(withCam ? { width: 240, height: 240 } : { width: 420, height: 176 });
   } catch (e) {
     console.warn('LocalShot fenêtre flottante :', e);
     pip = null;
@@ -238,7 +242,7 @@ function stopCam() {
   $('camPreview').hidden = true;
 }
 function closeBubble() { pip?.close(); pip = null; bar = null; pipCam = false; stopCam(); }
-$('cam').addEventListener('change', (e) => (e.target.checked ? openBubble() : closeBubble()));
+$('cam').addEventListener('change', (e) => { savePrefs(); return e.target.checked ? openBubble() : closeBubble(); });
 
 const focusSelf = () => chrome.windows.getCurrent().then((w) => chrome.windows.update(w.id, { state: 'normal', focused: true })).catch(() => {});
 const hideSelf = () => chrome.windows.getCurrent().then((w) => w.type === 'popup' && chrome.windows.update(w.id, { state: 'minimized' })).catch(() => {});
@@ -247,7 +251,7 @@ const hideSelf = () => chrome.windows.getCurrent().then((w) => w.type === 'popup
 $('start').addEventListener('click', start);
 $('pause').addEventListener('click', togglePause);
 $('stop').addEventListener('click', stop);
-$('go').addEventListener('click', begin);
+$('go').addEventListener('click', goClick);
 $('float').addEventListener('click', floatClick);
 $('cancel').addEventListener('click', () => {
   if (state === 'recording' || state === 'paused') {
@@ -257,9 +261,22 @@ $('cancel').addEventListener('click', () => {
 });
 function cancelRec() { discard = true; stop(); }
 
+// « Démarrer » dans cette fenêtre : le clic permet d'ouvrir la barre flottante (et la bulle caméra) avant de démarrer.
+async function goClick() {
+  if (state !== 'ready') return;
+  if (!pip && !(await sidePanelOpen())) {
+    if ($('cam').checked && !cam) await openBubble();
+    else await openPip(false);
+  }
+  renderLive();
+  begin();
+}
+
 async function start() {
   if (state !== 'idle') return;
   showError('');
+  // Caméra cochée mais pas encore ouverte (préférence du popup) : ce clic permet de l'ouvrir.
+  if ($('cam').checked && !cam) await openBubble();
   $('liveHint').textContent = '';
   discard = false;
   if (!MIME) return showError('Ce navigateur ne sait pas enregistrer de vidéo.');
@@ -287,6 +304,8 @@ async function start() {
       showError(`Impossible de démarrer : ${e.message}`);
     }
     closeBar();
+    show('setup');
+    focusSelf();
     return;
   }
 
@@ -326,6 +345,11 @@ async function start() {
     renderLive();
     renderBar();
     hideSelf();
+  } else if ('documentPictureInPicture' in window) {
+    // Lancé sans clic dans cette fenêtre (popup, panneau fermé) : la barre flottante s'ouvrira au clic sur « Démarrer ».
+    state = 'ready';
+    renderLive();
+    focusSelf();
   } else {
     begin();
   }
@@ -340,6 +364,7 @@ async function begin() {
   for (let n = 3; n > 0; n--) {
     if (state !== 'countdown') return;
     $('count').textContent = n;
+    $('count').hidden = false;
     cdN = n;
     renderBar();
     badge(String(n), '#f97316');
@@ -347,6 +372,7 @@ async function begin() {
   }
   if (state !== 'countdown') return;
   $('count').textContent = '';
+  $('count').hidden = true;
   cdN = 0;
   await startClicks();
   if (state !== 'countdown') return stopClicks(); // arrêté pendant la mise en place : cleanup() a déjà libéré l'écran
@@ -377,7 +403,9 @@ function renderLive() {
   $('float').hidden = !!pip || !('documentPictureInPicture' in window);
   $('pause').hidden = ready || state === 'countdown';
   $('stop').hidden = ready || state === 'countdown';
-  $('liveState').textContent = ready ? 'Prêt : cliquez sur Démarrer' : state === 'paused' ? 'En pause' : state === 'countdown' ? 'Préparez-vous…' : 'Enregistrement en cours';
+  $('liveDot').classList.toggle('on', state === 'recording');
+  $('cancel').hidden = false;
+  $('liveState').textContent = ready ? 'Prêt' : state === 'paused' ? 'En pause' : state === 'countdown' ? 'Préparez-vous…' : 'Enregistrement en cours';
   if (ready) $('timer').textContent = '0:00';
 }
 
@@ -393,7 +421,7 @@ function togglePause() {
     recorder.pause();
     pausedAt = performance.now();
     state = 'paused';
-    $('pause').textContent = '▶ Reprendre';
+    setIcon($('pause'), 'play', 'Reprendre');
     renderLive();
     renderBar();
     badge('II', '#64748b');
@@ -401,7 +429,7 @@ function togglePause() {
     pausedTotal += performance.now() - pausedAt;
     recorder.resume();
     state = 'recording';
-    $('pause').textContent = '❚❚ Pause';
+    setIcon($('pause'), 'pause', 'Pause');
     renderLive();
     renderBar();
     update();
@@ -504,9 +532,29 @@ chrome.runtime.onMessage.addListener((msg, _sender, send) => {
   else if (msg?.type === 'rec-stop') stop();
   else if (msg?.type === 'rec-start') begin();
   else if (msg?.type === 'rec-focus') focusSelf();
+  else if (msg?.type === 'rec-choose' && state === 'idle') { syncPrefs(); focusSelf(); start(); }
 });
 
 addEventListener('beforeunload', (e) => {
   if (['ready', 'countdown', 'recording', 'paused'].includes(state)) e.preventDefault();
 });
 addEventListener('pagehide', () => { if (state !== 'saving') badge(''); stopClicks(); stopDraw(); pip?.close(); });
+
+// Préférences changées dans le popup ou le panneau latéral pendant que cette fenêtre est ouverte.
+function syncPrefs() {
+  const p = JSON.parse(localStorage.getItem('rec-prefs') || '{}');
+  if ('mic' in p) $('mic').checked = p.mic;
+  if ('sys' in p) $('sys').checked = p.sys;
+  if ('clicks' in p) $('clicks').checked = p.clicks && pagesOk;
+}
+addEventListener('storage', (e) => e.key === 'rec-prefs' && syncPrefs());
+
+// Lancé depuis le popup ou le panneau latéral : on passe directement au choix de Chrome.
+// Avec la caméra, Chrome exige un clic dans cette fenêtre pour ouvrir la bulle : on attend « Choisir quoi enregistrer ».
+if (AUTO && !$('cam').checked) {
+  show('live');
+  $('go').hidden = $('pause').hidden = $('stop').hidden = $('float').hidden = true;
+  $('timer').textContent = '0:00';
+  $('liveState').textContent = 'Choisissez quoi enregistrer dans la fenêtre de Chrome…';
+  chrome.permissions.contains(PAGES).then((ok) => { pagesOk = ok; $('clicks').checked = prefs.clicks && ok; }).finally(start);
+}

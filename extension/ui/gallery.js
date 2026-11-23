@@ -1,6 +1,7 @@
 import { listCaptures, deleteCapture } from '../db.js';
 import { restoreFromFolder } from './restore.js';
 import { h, fmtDate, fmtSize, fmtDuration, isVideo, toast, download, revokeShare } from './common.js';
+import { svg } from './icons.js';
 
 const grid = document.getElementById('grid');
 const q = document.getElementById('q');
@@ -17,12 +18,12 @@ const thumbUrl = (c) => {
 function thumbBox(c) {
   const url = thumbUrl(c);
   const box = h('div', { class: 'thumb' + (isVideo(c) ? ' is-video' : '') }, url ? h('img', { src: url, decoding: 'async', loading: 'lazy', alt: '' }) : '');
-  if (isVideo(c)) box.append(h('span', { class: 'play' }, '▶'), h('span', { class: 'dur' }, fmtDuration(c.duration)));
+  if (isVideo(c)) box.append(h('span', { class: 'play' }, svg('play')), h('span', { class: 'dur' }, fmtDuration(c.duration)));
   return box;
 }
 
 function card(c) {
-  const del = h('button', { class: 'card-del', title: 'Supprimer', 'aria-label': 'Supprimer' }, '✕');
+  const del = h('button', { class: 'card-del', title: 'Supprimer', 'aria-label': 'Supprimer' }, svg('trash'));
   del.addEventListener('click', async () => {
     if (!confirm(`Supprimer « ${c.title} » ? Cette action est définitive.`)) return;
     const why = await revokeShare(c);

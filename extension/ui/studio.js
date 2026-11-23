@@ -4,6 +4,7 @@
 import { getCapture, updateCapture, addCapture, newId } from '../db.js';
 import { toast, makeThumb } from './common.js';
 import { tr } from './i18n.js';
+import { svg, setIcon } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
 const id = new URLSearchParams(location.search).get('id');
@@ -194,7 +195,7 @@ function startPlay() {
 }
 function stopPlay() { playing = false; v.pause(); syncPlay(); }
 function syncPlay() {
-  $('play').textContent = playing ? '❚❚' : '▶';
+  setIcon($('play'), playing ? 'pause' : 'play');
   const l = tr(playing ? 'Pause (espace)' : 'Lecture (espace)');
   $('play').title = l;
   $('play').setAttribute('aria-label', l);
@@ -246,6 +247,15 @@ function renderSegs() {
       h.style.left = pct(s.start);
       h.dataset.cut = i;
       h.title = tr('Déplacer la coupe');
+      // Recoller : enlève la coupe, les deux passages n'en font plus qu'un.
+      const j = document.createElement('button');
+      j.type = 'button';
+      j.className = 'st-join';
+      j.dataset.join = i;
+      j.title = tr('Recoller les deux passages');
+      j.setAttribute('aria-label', j.title);
+      j.append(svg('link'));
+      h.append(j);
       kids.push(h);
     }
   });
@@ -261,7 +271,7 @@ function renderZooms() {
     b.style.left = pct(z.start);
     b.style.width = pct(z.end - z.start);
     b.dataset.zoom = i;
-    b.textContent = `⊕ ×${String(z.scale).replace('.', ',')}`;
+    setIcon(b, 'zoom', `×${String(z.scale).replace('.', ',')}`);
     const label = `${tr('Zoom')} ${fmt(z.start)}–${fmt(z.end)}`;
     b.title = label;
     b.setAttribute('aria-label', label);
@@ -321,6 +331,8 @@ async function renderWave() {
 let drag = null;
 tracks.addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return;
+  const join = e.target.closest('[data-join]');
+  if (join) { e.preventDefault(); return joinAt(+join.dataset.join); }
   const cut = e.target.closest('[data-cut]');
   const zb = e.target.closest('[data-zoom]');
   const t = tAt(e.clientX);
@@ -372,6 +384,8 @@ $('ruler').addEventListener('pointerdown', (e) => { if (playing) stopPlay(); see
 // Clavier sur un passage ou un zoom (Entrée / espace : sélection).
 tracks.addEventListener('click', (e) => {
   if (e.detail !== 0) return; // souris : déjà traité
+  const jb = e.target.closest('[data-join]');
+  if (jb) return joinAt(+jb.dataset.join);
   const si = e.target.closest('[data-seg]'), zb = e.target.closest('[data-zoom]');
   if (si) { sel = { kind: 'seg', i: +si.dataset.seg }; seekTo(P.segs[sel.i].start); }
   else if (zb) { sel = { kind: 'zoom', i: +zb.dataset.zoom }; seekTo(P.zooms[sel.i].start); }
@@ -385,6 +399,15 @@ function split() {
   P.segs.splice(i, 1, { ...s, end: t }, { ...s, start: t });
   sel = { kind: 'seg', i: i + 1 };
   commit();
+}
+// Recolle le passage i au précédent : la coupe disparaît. Un passage supprimé recollé à un passage gardé est remis.
+function joinAt(i) {
+  const a = P.segs[i - 1], b = P.segs[i];
+  if (!a || !b) return;
+  P.segs.splice(i - 1, 2, { ...a, end: b.end, on: a.on || b.on });
+  sel = { kind: 'seg', i: i - 1 };
+  commit();
+  toast(tr('Passages recollés'));
 }
 function addZoom() {
   const t = v.currentTime;
@@ -429,6 +452,8 @@ $('shot').addEventListener('click', screenshot);
 $('split').addEventListener('click', split);
 $('addZoom').addEventListener('click', addZoom);
 $('toggleSeg').addEventListener('click', removeSel);
+$('joinPrev').addEventListener('click', () => sel?.kind === 'seg' && joinAt(sel.i));
+$('joinNext').addEventListener('click', () => sel?.kind === 'seg' && joinAt(sel.i + 1));
 $('delZoom').addEventListener('click', removeSel);
 $('speed').addEventListener('change', (e) => { if (sel?.kind === 'seg') { P.segs[sel.i].speed = +e.target.value; commit(); } });
 $('scale').addEventListener('input', (e) => { if (sel?.kind === 'zoom') { P.zooms[sel.i].scale = +e.target.value; renderSide(); renderZooms(); draw(); } });
@@ -489,7 +514,9 @@ function renderSide() {
     $('selTitle').textContent = `${tr(s.on ? 'Passage' : 'Passage supprimé')} ${fmt(s.start)}–${fmt(s.end)}`;
     $('speed').value = String(s.speed);
     $('speed').disabled = !s.on;
-    $('toggleSeg').textContent = tr(s.on ? 'Supprimer ce passage' : 'Remettre ce passage');
+    setIcon($('toggleSeg'), s.on ? 'trash' : 'undo', tr(s.on ? 'Supprimer ce passage' : 'Remettre ce passage'));
+    $('joinPrev').hidden = sel.i === 0;
+    $('joinNext').hidden = sel.i === P.segs.length - 1;
   } else if (sel?.kind === 'zoom') {
     const z = P.zooms[sel.i];
     $('selTitle').textContent = `${tr('Zoom')} ${fmt(z.start)}–${fmt(z.end)}`;

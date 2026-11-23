@@ -3,6 +3,8 @@ import { listCaptures, CHANGES } from './db.js';
 import { openRecorder, recorderStatus } from './recorder-launch.js';
 import { ACTIVE, fmtTime, DRAW_TOOLS, DRAW_COLORS } from './ui/recbar.js';
 import { h, fmtDate, fmtDuration, isVideo } from './ui/common.js';
+import { mountRecOptions } from './ui/recopts.js';
+import { svg, setIcon } from './ui/icons.js';
 
 const $ = (id) => document.getElementById(id);
 const page = (p) => chrome.tabs.create({ url: chrome.runtime.getURL(p) });
@@ -40,15 +42,30 @@ document.querySelectorAll('[data-mode]').forEach((btn) =>
 // ---------- Vidéo ----------
 const recBtn = $('record');
 let live = false;
+const recPanel = $('recPanel');
+const recErr = (m) => { $('recErr').textContent = m; $('recErr').hidden = !m; };
+mountRecOptions($('recOpts'), { onError: recErr });
+// Le bouton affiche les options ici même ; « Choisir quoi enregistrer » ouvre le choix de Chrome.
 recBtn.addEventListener('click', async () => {
-  recBtn.disabled = true;
+  if (live) {
+    await chrome.runtime.sendMessage({ type: 'rec-stop' }).catch(() => {});
+    return refreshRecorder();
+  }
+  recPanel.hidden = !recPanel.hidden;
+  recBtn.setAttribute('aria-expanded', String(!recPanel.hidden));
+});
+$('recGo').addEventListener('click', async (e) => {
+  const b = e.currentTarget;
+  b.disabled = true;
+  recErr('');
   try {
-    if (live) await chrome.runtime.sendMessage({ type: 'rec-stop' }).catch(() => {});
-    else await openRecorder();
-  } catch (e) {
-    showError(`Vidéo : ${e.message}`);
+    await openRecorder({ auto: true });
+    recPanel.hidden = true;
+    recBtn.setAttribute('aria-expanded', 'false');
+  } catch (err) {
+    recErr(`Vidéo : ${err.message}`);
   } finally {
-    recBtn.disabled = false;
+    b.disabled = false;
     refreshRecorder();
   }
 });
@@ -61,6 +78,7 @@ async function refreshRecorder() {
   rec = (await recorderStatus()) || { state: 'idle' };
   live = ACTIVE.includes(rec.state);
   recBtn.hidden = live;
+  if (live) recPanel.hidden = true;
   $('recCtl').hidden = !live;
   if (!live) {
     recBtn.classList.remove('live');
@@ -72,11 +90,13 @@ async function refreshRecorder() {
   $('rcState').textContent = { ready: 'Prêt', countdown: 'Préparez-vous…', recording: 'Enregistrement', paused: 'En pause' }[state];
   $('rcTime').textContent = state === 'countdown' ? `${rec.count || ''}…` : fmtTime(state === 'ready' ? 0 : rec.elapsed);
   const main = $('rcMain');
-  main.textContent = state === 'ready' || state === 'countdown' ? '● Démarrer' : state === 'paused' ? '▶ Reprendre' : '❚❚ Pause';
+  if (state === 'ready' || state === 'countdown') setIcon(main, 'record', 'Démarrer');
+  else if (state === 'paused') setIcon(main, 'play', 'Reprendre');
+  else setIcon(main, 'pause', 'Pause');
   main.classList.toggle('go', state === 'ready');
   main.disabled = state === 'countdown';
   $('rcStop').hidden = state === 'ready' || state === 'countdown';
-  if (!$('rcCancel').classList.contains('sure')) $('rcCancel').textContent = '✕ Annuler';
+  if (!$('rcCancel').classList.contains('sure')) setIcon($('rcCancel'), 'x', 'Annuler');
   $('rcTools').hidden = !rec.draw || !['recording', 'paused'].includes(state);
   $('rcNote').hidden = !rec.note;
   $('rcNote').textContent = rec.note || '';
@@ -84,14 +104,14 @@ async function refreshRecorder() {
     for (const b of $('rcTools').querySelectorAll('[data-tool]')) b.setAttribute('aria-pressed', String(b.dataset.tool === rec.draw.tool));
     for (const b of $('rcTools').querySelectorAll('[data-c]')) b.setAttribute('aria-pressed', String(b.dataset.c === rec.draw.color));
   }
-  $('rcDetach').textContent = rec.bar ? '↙ Fermer la barre flottante' : '↗ Détacher la barre';
+  setIcon($('rcDetach'), rec.bar ? 'dock' : 'external', rec.bar ? 'Fermer la barre flottante' : 'Détacher la barre');
 }
 
 // Outils d'annotation : un clic sur l'outil actif arrête de dessiner.
 {
   const box = $('rcTools');
   const mk = (cls, text, label, fn) => {
-    const b = h('button', { type: 'button', class: cls, title: label, 'aria-label': label }, text);
+    const b = h('button', { type: 'button', class: cls, title: label, 'aria-label': label }, text ? svg(text) : '');
     b.addEventListener('click', fn);
     box.append(b);
     return b;
@@ -116,7 +136,7 @@ async function refreshRecorder() {
   for (const [id, icon, label] of DRAW_TOOLS) mk('tool', icon, label, () => draw(rec.draw?.tool === id ? null : id, rec.draw?.color)).dataset.tool = id;
   box.append(h('span', { class: 'sep' }));
   for (const c of DRAW_COLORS) Object.assign(mk('sw', '', 'Couleur', () => draw(rec.draw?.tool || 'pen', c)), { style: `background:${c}` }).dataset.c = c;
-  mk('clear', '⌫', 'Effacer les annotations', () => send('rec-draw-clear'));
+  mk('clear', 'eraser', 'Effacer les annotations', () => send('rec-draw-clear'));
 }
 
 $('rcMain').addEventListener('click', () => send('rec-main').then(refreshRecorder));
@@ -129,7 +149,7 @@ $('rcCancel').addEventListener('click', (e) => {
     return send('rec-cancel').then(refreshRecorder);
   }
   b.classList.add('sure');
-  b.textContent = 'Supprimer la vidéo ?';
+  setIcon(b, 'trash', 'Supprimer la vidéo ?');
   sureTimer = setTimeout(() => { b.classList.remove('sure'); refreshRecorder(); }, 3000);
 });
 // Chrome n'ouvre pas de fenêtre flottante depuis le panneau latéral : c'est la fenêtre d'enregistrement qui s'en charge.
@@ -148,7 +168,7 @@ function row(c) {
   const url = src ? URL.createObjectURL(src) : null;
   if (url) urls.push(url);
   const thumb = h('div', { class: 'thumb' }, url ? h('img', { src: url, alt: '', decoding: 'async', loading: 'lazy' }) : '');
-  if (isVideo(c)) thumb.append(h('span', { class: 'dur' }, `▶ ${fmtDuration(c.duration)}`));
+  if (isVideo(c)) thumb.append(h('span', { class: 'dur' }, svg('play'), h('span', {}, fmtDuration(c.duration))));
   const meta = `${fmtDate(c.createdAt)}${c.sharedId ? ' · partagée' : ''}`;
   const btn = h('button', { class: 'item', title: c.title }, thumb,
     h('div', { class: 'info' }, h('div', { class: 'title' }, c.title), h('div', { class: 'meta' }, meta)));

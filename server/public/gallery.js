@@ -1,4 +1,5 @@
 import { h, fmtDate, fmtSize, fmtDuration, isVideo, fileUrl, thumbUrl, toast } from '/assets/common.js';
+import { svg } from './icons.js';
 
 const grid = document.getElementById('grid');
 const q = document.getElementById('q');
@@ -8,7 +9,7 @@ const lan = document.getElementById('lan');
 let items = [];
 
 function card(c) {
-  const del = h('button', { class: 'card-del', title: 'Supprimer', 'aria-label': 'Supprimer' }, '✕');
+  const del = h('button', { class: 'card-del', title: 'Supprimer', 'aria-label': 'Supprimer' }, svg('trash'));
   del.addEventListener('click', async () => {
     if (!confirm(`Supprimer « ${c.title} » ? Cette action est définitive.`)) return;
     const r = await fetch(`/api/captures/${c.id}`, { method: 'DELETE' });
@@ -19,14 +20,14 @@ function card(c) {
   });
   const link = h('a', { class: 'card-link', href: `/c/${c.id}` },
     c.kind === 'enc'
-      ? h('div', { class: 'thumb is-enc' }, h('span', {}, '🔒'))
+      ? h('div', { class: 'thumb is-enc' }, svg('lock'))
       : isVideo(c)
       ? h('div', { class: 'thumb is-video' }, thumbUrl(c) ? h('img', { src: thumbUrl(c), decoding: 'async', loading: 'lazy', alt: '' }) : h('video', { src: `${fileUrl(c)}#t=0.5`, preload: 'metadata', muted: '', playsinline: '' }),
-          h('span', { class: 'play' }, '▶'), h('span', { class: 'dur' }, fmtDuration(c.duration)))
+          h('span', { class: 'play' }, svg('play')), h('span', { class: 'dur' }, fmtDuration(c.duration)))
       : h('div', { class: 'thumb' }, h('img', { src: thumbUrl(c) || fileUrl(c), decoding: 'async', loading: 'lazy', alt: '' })),
     h('div', { class: 'card-body' },
       h('div', { class: 'card-title' }, c.title),
-      h('div', { class: 'card-meta' }, `${fmtDate(c.createdAt)} · ${c.kind === 'enc' ? 'chiffré de bout en bout' : isVideo(c) ? `Vidéo ${fmtDuration(c.duration)}` : `${c.width}×${c.height}`} · ${c.views || 0} vue${c.views > 1 ? "s" : ""}${c.hasPassword ? " · 🔒" : ""}${c.expiresAt ? " · expire le " + fmtDate(c.expiresAt) : ""}`)));
+      h('div', { class: 'card-meta' }, `${fmtDate(c.createdAt)} · ${c.kind === 'enc' ? 'chiffré de bout en bout' : isVideo(c) ? `Vidéo ${fmtDuration(c.duration)}` : `${c.width}×${c.height}`} · ${c.views || 0} vue${c.views > 1 ? "s" : ""}${c.hasPassword ? " · protégé par mot de passe" : ""}${c.expiresAt ? " · expire le " + fmtDate(c.expiresAt) : ""}`)));
   return h('article', { class: 'card' }, link, del);
 }
 

@@ -155,3 +155,11 @@ body.dropping::after { content: "Déposez pour ajouter à LocalShot"; position: 
 .stage img { transition: opacity .2s; }
 @keyframes ls-spin { to { transform: rotate(360deg); } }
 .thumb img { background: #eef0f3; }
+
+/* Icônes (icons.js) */
+.ico { width: 1.15em; height: 1.15em; flex: none; vertical-align: -.2em; }
+.ico:not(:last-child) { margin-inline-end: .45em; }
+
+.card-del { display: grid; place-items: center; }
+.card-del .ico, .thumb .play .ico { margin: 0; }
+.thumb.is-enc { color: #94a3b8; }

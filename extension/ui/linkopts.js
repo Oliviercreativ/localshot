@@ -1,6 +1,7 @@
 // Options d'un lien de partage : vues, expiration, mot de passe, téléchargement.
 // Copie identique dans extension/ui/ et server/public/ (vérifié par npm test).
 // request(path, opts) appelle le serveur avec les droits du propriétaire (clé ou session).
+import { svg } from './icons.js';
 const DAY = 24 * 3600 * 1000;
 const CHOICES = [['', 'Jamais'], ['1', '24 heures'], ['7', '7 jours'], ['30', '30 jours']];
 
@@ -57,7 +58,7 @@ export function linkOptions(box, c, { request, notify = () => {}, onChange = () 
     if (c.hasPassword) {
       const rm = el('button', { type: 'button', class: 'btn' }, 'Retirer');
       rm.addEventListener('click', async () => { if (await patch({ password: null })) notify('Mot de passe retiré'); });
-      pwEl = el('div', { class: 'lo-field' }, el('span', {}, 'Mot de passe'), el('span', { class: 'lo-on' }, '🔒 Activé'), rm);
+      pwEl = el('div', { class: 'lo-field' }, el('span', {}, 'Mot de passe'), el('span', { class: 'lo-on' }, svg('lock'), el('span', {}, 'Activé')), rm);
     } else {
       const input = el('input', { type: 'password', placeholder: 'Aucun', autocomplete: 'new-password', 'aria-label': 'Mot de passe du lien', maxlength: '200' });
       const set = el('button', { type: 'button', class: 'btn' }, 'Définir');

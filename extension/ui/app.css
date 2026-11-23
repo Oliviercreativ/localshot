@@ -187,3 +187,11 @@ kbd { display: inline-block; min-width: 22px; text-align: center; padding: 2px 6
 .cut-panel.menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; width: min(400px, 92vw); margin: 0; box-shadow: 0 14px 40px rgba(15,23,42,.18); }
 .cut-panel.menu .hint { margin: 0; font-size: 12px; line-height: 1.45; }
 .cut-panel.menu progress[hidden], .cut-panel.menu .btn[hidden] { display: none; }
+
+/* Icônes (icons.js) */
+.ico { width: 1.15em; height: 1.15em; flex: none; vertical-align: -.2em; }
+.ico:not(:last-child) { margin-inline-end: .45em; }
+
+.card-del { display: grid; place-items: center; }
+.card-del .ico, .thumb .play .ico { margin: 0; }
+.thumb.is-enc { color: #94a3b8; }
