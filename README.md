@@ -74,6 +74,8 @@ deletes them**. Keep a copy on disk:
   « Télécharger » and « Tout télécharger » (Download all) save there.
 - **Auto-save** (optional): every new capture and video is also written to that folder as soon as it is taken.
   With a custom folder, Chrome may ask you to allow access again after a restart (one click on the capture page).
+- **Restore** (« Restaurer », gallery or Settings): after reinstalling the extension, pick your save folder: LocalShot reads it
+  and brings back the missing captures and videos (title and date are recovered from the file names, no duplicates).
 
 The gallery and the side panel can be filtered by **All / Photos / Videos**.
 

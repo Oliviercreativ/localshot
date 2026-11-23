@@ -1,4 +1,5 @@
 import { serverConf, saveServerConf, api, toast } from './common.js';
+import { restoreFromFolder } from './restore.js';
 import { PROVIDERS, transcribeConf, saveTranscribeConf } from './transcribe.js';
 import { saveConf, setSaveConf, cleanSub, pickFolder, canPickFolder, folderAccess } from './savefolder.js';
 
@@ -148,3 +149,20 @@ $('trForm').addEventListener('submit', async (e) => {
   showTr();
 });
 showTr();
+
+// ---------- Restauration depuis un dossier (après une réinstallation) ----------
+for (const b of document.querySelectorAll('.restore-btn')) {
+  b.addEventListener('click', async () => {
+    const all = document.querySelectorAll('.restore-btn');
+    all.forEach((x) => (x.disabled = true));
+    try {
+      const r = await restoreFromFolder({ onProgress: (i, n) => n && toast(`Lecture du dossier… ${i}/${n}`) });
+      if (!r) return;
+      toast(r.added ? `${r.added} élément${r.added > 1 ? 's' : ''} restauré${r.added > 1 ? 's' : ''}${r.skipped ? ` (${r.skipped} déjà présent${r.skipped > 1 ? 's' : ''})` : ''}`
+        : r.skipped ? 'Tout est déjà dans LocalShot' : 'Aucune capture ni vidéo LocalShot dans ce dossier', r.failed && !r.added ? 'error' : '');
+      if (r.added) { /* la galerie se mettra à jour */ }
+    } finally {
+      all.forEach((x) => (x.disabled = false));
+    }
+  });
+}

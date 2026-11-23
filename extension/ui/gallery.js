@@ -1,4 +1,5 @@
 import { listCaptures, deleteCapture } from '../db.js';
+import { restoreFromFolder } from './restore.js';
 import { h, fmtDate, fmtSize, fmtDuration, isVideo, toast, download, revokeShare } from './common.js';
 
 const grid = document.getElementById('grid');
@@ -78,3 +79,20 @@ q.addEventListener('input', render);
 items = await listCaptures();
 render();
 showStorage();
+
+// ---------- Restauration depuis un dossier (après une réinstallation) ----------
+for (const b of document.querySelectorAll('.restore-btn')) {
+  b.addEventListener('click', async () => {
+    const all = document.querySelectorAll('.restore-btn');
+    all.forEach((x) => (x.disabled = true));
+    try {
+      const r = await restoreFromFolder({ onProgress: (i, n) => n && toast(`Lecture du dossier… ${i}/${n}`) });
+      if (!r) return;
+      toast(r.added ? `${r.added} élément${r.added > 1 ? 's' : ''} restauré${r.added > 1 ? 's' : ''}${r.skipped ? ` (${r.skipped} déjà présent${r.skipped > 1 ? 's' : ''})` : ''}`
+        : r.skipped ? 'Tout est déjà dans LocalShot' : 'Aucune capture ni vidéo LocalShot dans ce dossier', r.failed && !r.added ? 'error' : '');
+      if (r.added) { items = await listCaptures(); render(); showStorage(); }
+    } finally {
+      all.forEach((x) => (x.disabled = false));
+    }
+  });
+}

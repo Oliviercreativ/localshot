@@ -179,3 +179,5 @@ kbd { display: inline-block; min-width: 22px; text-align: center; padding: 2px 6
 .stage img { transition: opacity .2s; }
 @keyframes ls-spin { to { transform: rotate(360deg); } }
 .thumb img { background: #eef0f3; }
+.restore-box { margin: 18px auto 26px; max-width: 520px; line-height: 1.7; }
+.restore-box .btn { margin-top: 8px; }

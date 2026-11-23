@@ -464,16 +464,17 @@ const server = http.createServer(async (req, res) => {
       const wait = blockedFor(ipKey);
       if (wait) return send(res, 429, JSON.stringify({ error: `Trop d'essais : réessayez dans ${Math.ceil(wait / 60)} min` }), 'application/json; charset=utf-8', { 'Retry-After': String(wait) });
       // Lien très attaqué (toutes adresses confondues) : les essais passent un par un, 3 s chacun
-      // (20 par minute au plus, quel que soit le nombre d'attaquants), mais le bon mot de passe passe toujours.
+      // (20 par minute au plus, une place par adresse), mais le bon mot de passe passe toujours.
       if ((linkFailures.get(c.id) || 0) >= 50) {
-        const q = linkQueues.get(c.id) || { tail: Promise.resolve(), waiting: 0 };
-        if (q.waiting >= 20) return send(res, 429, JSON.stringify({ error: 'Trop d\'essais en cours : réessayez dans une minute' }), 'application/json; charset=utf-8', { 'Retry-After': '60' });
-        q.waiting += 1;
+        // Une seule place par adresse : un attaquant ne peut pas occuper toute la file et bloquer le vrai client.
+        const q = linkQueues.get(c.id) || { tail: Promise.resolve(), ips: new Set() };
+        const ip = clientAddr(req);
+        if (q.ips.has(ip) || q.ips.size >= 500) return send(res, 429, JSON.stringify({ error: 'Trop d\'essais en cours : réessayez dans une minute' }), 'application/json; charset=utf-8', { 'Retry-After': '60' });
+        q.ips.add(ip);
         linkQueues.set(c.id, q);
         const turn = q.tail.then(() => new Promise((r) => setTimeout(r, 3000)));
         q.tail = turn;
-        await turn;
-        q.waiting -= 1;
+        try { await turn; } finally { q.ips.delete(ip); }
       }
       if (typeof body.password !== 'string' || !(await checkPassword(body.password, c.password))) {
         fail(ipKey, 5, Infinity);
