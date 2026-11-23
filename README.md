@@ -23,7 +23,15 @@ After a code update: click the ↻ button on the extension's card in `chrome://e
 | Area selected with the mouse (Esc to cancel) | `⌥ ⇧ S` |
 | Video: open the recorder / stop recording | `⌥ ⇧ R` |
 
-After a capture, its page opens: editable title, copy image, download, delete.
+After a capture, its page opens: editable title, copy image, download, delete, **annotate**.
+
+The interface follows your browser language: **French or English**.
+
+## Annotate and blur
+
+« Annoter » (Annotate) opens an editor on top of the capture: **arrows, boxes, text, numbered steps, blur and redaction**,
+7 colours, 3 stroke sizes, undo/redo (⌘Z / ⇧⌘Z), move and delete items. Blur is a coarse pixelation baked into the saved image
+(it cannot be undone by the recipient); « Masquer » covers an area with a solid block. The original is kept: « Revenir à l'original » restores it.
 The popup opens the full gallery in a tab (« Ouvrir la galerie », Open gallery) or a **side panel** on the right of the window
 (« Panneau latéral »), like Claude in Chrome: capture buttons, video recording and your recent captures, updated live.
 Shortcuts can be changed in `chrome://extensions/shortcuts`.
@@ -50,6 +58,15 @@ The video then opens in its own page and shows up in the gallery. MP4 when Chrom
   "Manage extension" → Site access.
 - The video is kept in memory while recording: about 30 MB per minute.
 
+On a video page:
+
+- **Trim / GIF** (« Découper / GIF »): pick a start and an end, then **trim** the video (the segment is replayed and re-recorded
+  in the browser, so it takes as long as the segment; the original is kept) or **export a GIF** (10 fps, 640 px, 20 s max).
+- **Captions** (« Sous-titres »): automatic transcription, clickable transcript, corrections, export to `.srt` / `.vtt`.
+  Choose the service in Settings: **your own Whisper server** (any OpenAI-compatible API such as
+  [speaches](https://github.com/speaches-ai/speaches): nothing leaves your machines), **Mistral (Voxtral)**, **OpenAI (Whisper)** or **Groq**.
+  Only the audio track is sent, and only when you click.
+
 ⚠️ Captures are stored in the browser (the extension's IndexedDB): **uninstalling the extension
 deletes them**. Keep a copy on disk:
 
@@ -60,17 +77,17 @@ deletes them**. Keep a copy on disk:
 
 The gallery and the side panel can be filtered by **All / Photos / Videos**.
 
-## Sharing over Wi-Fi (optional)
+## Sharing (optional, your own server)
 
-Only if you want to send a link to your phone or another computer:
+Without a server, **nothing leaves your computer**. To send links, run the LocalShot server on a machine you control
+(Raspberry Pi, NAS, VPS or Docker, see below), then in the extension: « Réglages » (Settings) → server address + access key.
+On a capture page, **« Partager »** (Share) uploads only that capture and copies the link; « Arrêter le partage » (Stop sharing) deletes it from the server.
 
-```bash
-npm run start:lan
-```
-
-Then, on a capture or video page: **« Partager »** (Share) → the link is copied. Only that capture is
-copied to the local server (`data/` folder); « Arrêter le partage » (Stop sharing) removes it. Node ≥ 18, no dependencies (≥ 20.6 for `npm run start:env`).
-`npm start` runs the server without exposing it to the network (useful for testing).
+- **Encrypted** (tick « Chiffré » before sharing): the capture, its title and captions are encrypted in the browser (AES-256-GCM).
+  The server stores an unreadable file; the key travels in the link after `#`, which browsers never send to the server.
+  No preview or thumbnail for these links.
+- **Comments**: viewers can leave comments, pinned to a moment of the video (markers on the progress bar).
+  You see them on the capture page and can delete them; they can be turned off per link.
 
 ### Link options
 
@@ -83,6 +100,21 @@ Once a capture is shared, its page (in the extension or in the server's web gall
 - **Allow download**: untick to hide the download button for visitors. This only discourages: anything shown on screen can still be recorded.
 - **Link preview**: when the server has a public address (`LOCALSHOT_PUBLIC_URL`), links pasted in Slack, WhatsApp or an email
   show the title and a thumbnail. Nothing is revealed for password-protected links.
+
+### Web app (PWA) and upload
+
+The server's web gallery can be **installed as an app** on Mac or PC (Chrome/Edge: « Installer l'application » button, Safari: File → Add to Dock).
+From there you can also **add PNG, MP4 or WebM files** (button or drag and drop), and use the system « Share to LocalShot » menu.
+
+### Docker
+
+```bash
+cp .env.example .env   # set LOCALSHOT_TOKEN and LOCALSHOT_PUBLIC_URL
+docker compose up -d
+```
+
+The container is read-only, runs as a non-root user and only listens on `127.0.0.1:4777`: put an HTTPS proxy in front
+(Caddy, Traefik, `tailscale serve`, Cloudflare Tunnel…). Data lives in the `localshot-data` volume.
 
 ## Where shared files are stored
 
@@ -133,19 +165,19 @@ Key and settings: `/etc/localshot.env` on the Pi. Logs: `journalctl -u localshot
   `unlimitedStorage` (no storage limit for captures), `sidePanel` (the side panel, which shows no warning and grants no access to your pages).
 - Optional permission (only if you tick "Click effect"): access to pages, used only
   during a video recording to draw clicks, and handed back to Chrome as soon as you untick the option.
-- Only allowed network address: `http://localhost:4777` (the sharing server, if running),
-  plus your own server's address if you set one (permission requested for that single address).
-  No analytics, no account, no cloud.
+- No network access by default: the extension can only reach the addresses you set (your server, your transcription service),
+  each one approved in a Chrome prompt. Full policy: [PRIVACY.md](PRIVACY.md).
+- No analytics, no account, no cloud.
 - No permanent access to your sites: the extension does not read your pages in the background.
 
 Sharing server:
-- `npm start` listens only on `127.0.0.1`; `npm run start:lan` makes links reachable over Wi-Fi.
-- Only captures whose link is known (random `/c/<id>`) are visible from the network;
-  listing, adding and deleting are only possible from this computer.
-- On the Pi (`LOCALSHOT_TOKEN` set): listing, adding and deleting require the access key
+- `npm start` listens only on `127.0.0.1` (`LOCALSHOT_HOST=0.0.0.0` in Docker); put `tailscale serve` or an HTTPS proxy in front.
+- Only captures whose link is known (random `/c/<id>`) are visible; with `LOCALSHOT_TOKEN` set,
+  listing, adding, editing and deleting require the access key
   (`Authorization` header for the extension; for the web gallery, an `HttpOnly` + `SameSite=Strict` cookie
   holding a random session ID, revoked on logout).
 - A share-link visitor only receives the capture's public information (never a local file path).
+- Link passwords are hashed with scrypt; wrong attempts are throttled per link and per address.
 - `Host` check (anti DNS-rebinding) and `Origin` check, no CORS, strict CSP.
 
 ## Known limitations
@@ -156,11 +188,9 @@ Sharing server:
 
 ## Roadmap
 
-- Video: camera bubble for tab recordings too, trimming start and end, importing videos from the computer
-- Installable PWA on phone and other computers (served by the Pi)
-- Automatic sync to the Pi (today: « Partager » button, one capture at a time)
-- Annotations (arrows, text, blur)
-- English interface
+- Video: camera bubble for tab recordings too, faster trimming (WebCodecs), annotations on videos
+- Automatic sync to your server (today: « Partager » button, one capture at a time)
+- Chrome Web Store release (see [docs/CHROME-WEB-STORE.md](docs/CHROME-WEB-STORE.md))
 
 ## License
 

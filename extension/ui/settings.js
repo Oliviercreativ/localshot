@@ -1,4 +1,5 @@
-import { serverConf, saveServerConf, DEFAULT_SERVER, api, toast } from './common.js';
+import { serverConf, saveServerConf, api, toast } from './common.js';
+import { PROVIDERS, transcribeConf, saveTranscribeConf } from './transcribe.js';
 import { saveConf, setSaveConf, cleanSub, pickFolder, canPickFolder, folderAccess } from './savefolder.js';
 
 const $ = (id) => document.getElementById(id);
@@ -21,9 +22,9 @@ function originOf(v) {
   return u.origin;
 }
 
-// Retire l'autorisation de l'ancien serveur (sauf celui de ce Mac, inclus dans l'extension).
+// Retire l'autorisation de l'ancien serveur.
 async function dropOld(oldUrl, newUrl) {
-  if (oldUrl === newUrl || oldUrl === DEFAULT_SERVER) return;
+  if (!oldUrl || oldUrl === newUrl) return;
   await chrome.permissions.remove({ origins: [`${oldUrl}/*`] }).catch(() => {});
 }
 
@@ -34,7 +35,7 @@ async function test() {
     const r = await api('/api/captures', { signal: AbortSignal.timeout(5000) });
     if (r.ok) return status(`Connecté ✓ ${(await r.json()).length} élément(s) partagé(s) sur ce serveur.`, true);
     if (r.status === 401) return status('Serveur joignable, mais la clé d\'accès est incorrecte.', false);
-    return status('Serveur joignable, mais il refuse l\'accès depuis ce Mac (clé requise ?).', false);
+    return status('Serveur joignable, mais il refuse l\'accès (clé requise ?).', false);
   } catch {
     status('Serveur injoignable. Vérifiez l\'adresse et que Tailscale est connecté sur ce Mac.', false);
   }
@@ -45,11 +46,9 @@ $('form').addEventListener('submit', async (e) => {
   let origin;
   try { origin = originOf($('url').value); }
   catch (err) { return status(err.message === 'https' ? 'Utilisez une adresse en https:// (http n\'est accepté que sur le réseau local).' : 'Adresse invalide.', false); }
-  if (origin !== DEFAULT_SERVER) {
-    // Doit être appelé directement dans le clic (geste utilisateur).
-    const granted = await chrome.permissions.request({ origins: [`${origin}/*`] }).catch(() => false);
-    if (!granted) return status('Autorisation refusée : LocalShot ne peut pas joindre ce serveur.', false);
-  }
+  // Doit être appelé directement dans le clic (geste utilisateur).
+  const granted = await chrome.permissions.request({ origins: [`${origin}/*`] }).catch(() => false);
+  if (!granted) return status('Autorisation refusée : LocalShot ne peut pas joindre ce serveur.', false);
   const old = serverConf().url;
   saveServerConf({ url: origin, key: $('key').value.trim() });
   $('url').value = origin;
@@ -60,15 +59,15 @@ $('form').addEventListener('submit', async (e) => {
 
 $('reset').addEventListener('click', async () => {
   const old = serverConf().url;
-  saveServerConf({ url: DEFAULT_SERVER, key: '' });
-  await dropOld(old, DEFAULT_SERVER);
-  $('url').value = DEFAULT_SERVER;
+  saveServerConf({ url: '', key: '' });
+  await dropOld(old, '');
+  $('url').value = '';
   $('key').value = '';
-  toast('Serveur de ce Mac');
-  await test();
+  $('status').hidden = true;
+  toast('Serveur oublié : plus aucun partage possible');
 });
 
-if (conf.url !== DEFAULT_SERVER || conf.key) test();
+if (conf.url) test();
 
 // ---------- Dossier de sauvegarde ----------
 async function showSave() {
@@ -101,3 +100,51 @@ $('pick').addEventListener('click', async (e) => {
 $('sub').addEventListener('change', () => { setSaveConf({ sub: cleanSub($('sub').value) }); showSave(); });
 $('auto').addEventListener('change', () => { setSaveConf({ auto: $('auto').checked }); showSave(); });
 showSave();
+
+// ---------- Sous-titres automatiques ----------
+const trSel = $('trProvider');
+for (const [k, p] of Object.entries(PROVIDERS)) trSel.append(Object.assign(document.createElement('option'), { value: k, textContent: p.label }));
+function showTr(fromSelect) {
+  const saved = transcribeConf();
+  const k = fromSelect ? trSel.value : saved.provider;
+  trSel.value = k;
+  $('trFields').hidden = !k;
+  if (!k) return;
+  const p = PROVIDERS[k];
+  const same = k === saved.provider;
+  $('trUrl').value = same ? saved.url : p.url;
+  $('trModel').value = same ? saved.model : p.model;
+  $('trKey').value = same ? saved.key : '';
+  $('trLang').value = same ? saved.language : '';
+  $('trUrl').closest('#trFields').querySelector('[for=trKey]').hidden = $('trKey').hidden = !p.key;
+  $('trUrl').readOnly = k !== 'local';
+  $('trStatus').textContent = k === 'local'
+    ? 'Exemple : « docker run -p 8000:8000 ghcr.io/speaches-ai/speaches » sur votre Mac ou votre serveur, puis http://localhost:8000/v1/audio/transcriptions.'
+    : `Le son des vidéos que vous transcrivez sera envoyé à ${p.label.split(' — ')[0]}, selon ses conditions d'utilisation.`;
+}
+trSel.addEventListener('change', () => showTr(true));
+$('trForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const k = trSel.value;
+  const old = transcribeConf();
+  if (!k) {
+    saveTranscribeConf({});
+    if (old.url) await chrome.permissions.remove({ origins: [`${new URL(old.url).origin}/*`] }).catch(() => {});
+    toast('Sous-titres désactivés');
+    return showTr();
+  }
+  let url;
+  try { url = new URL($('trUrl').value.trim()); if (!['http:', 'https:'].includes(url.protocol)) throw 0; }
+  catch { return toast('Adresse de l\'API invalide', 'error'); }
+  if (PROVIDERS[k].key && !$('trKey').value.trim()) return toast('Clé API manquante', 'error');
+  // Autorisation réseau pour cette seule adresse (demandée dans le clic).
+  const granted = await chrome.permissions.request({ origins: [`${url.origin}/*`] }).catch(() => false);
+  if (!granted) return toast('Autorisation refusée : LocalShot ne pourra pas joindre ce service', 'error');
+  if (old.url && new URL(old.url).origin !== url.origin && new URL(old.url).origin !== new URL(serverConf().url || 'http://x').origin) {
+    await chrome.permissions.remove({ origins: [`${new URL(old.url).origin}/*`] }).catch(() => {});
+  }
+  saveTranscribeConf({ provider: k, url: url.href, model: $('trModel').value.trim() || PROVIDERS[k].model, key: $('trKey').value.trim(), language: $('trLang').value.trim().toLowerCase() });
+  toast('Service de transcription enregistré');
+  showTr();
+});
+showTr();

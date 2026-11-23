@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.join(__dirname, '..', '..');
-for (const f of ['player.js', 'player.css', 'linkopts.js']) {
+for (const f of ['player.js', 'player.css', 'linkopts.js', 'transcript.js', 'comments.js', 'e2e.js', 'i18n.js']) {
   test(`${f} identique dans l'extension et le serveur`, () => {
     assert.strictEqual(
       fs.readFileSync(path.join(root, 'server/public', f), 'utf8'),

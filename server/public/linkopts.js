@@ -78,7 +78,15 @@ export function linkOptions(box, c, { request, notify = () => {}, onChange = () 
     });
     const dlEl = el('label', { class: 'lo-check' }, dl, 'Autoriser le téléchargement');
 
-    box.replaceChildren(el('div', { class: 'lo-head' }, el('span', {}, 'Options du lien'), viewsEl), expEl, pwEl, dlEl);
+    // Commentaires des visiteurs
+    const cm = el('input', { type: 'checkbox' });
+    cm.checked = c.allowComments !== false;
+    cm.addEventListener('change', async () => {
+      if (await patch({ allowComments: cm.checked })) notify(cm.checked ? 'Commentaires autorisés' : 'Commentaires désactivés');
+    });
+    const cmEl = el('label', { class: 'lo-check' }, cm, 'Autoriser les commentaires');
+
+    box.replaceChildren(el('div', { class: 'lo-head' }, el('span', {}, 'Options du lien'), viewsEl), expEl, pwEl, dlEl, cmEl);
     box.hidden = false;
   }
 

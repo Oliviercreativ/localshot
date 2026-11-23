@@ -1,0 +1,20 @@
+{
+  "extName": {
+    "message": "LocalShot — captures 100 % locales"
+  },
+  "extDescription": {
+    "message": "Captures d'écran et vidéos stockées uniquement dans votre navigateur. Annotations, flou, découpe, partage sur votre propre serveur."
+  },
+  "cmdVisible": {
+    "message": "Capturer la partie visible"
+  },
+  "cmdFull": {
+    "message": "Capturer la page entière"
+  },
+  "cmdArea": {
+    "message": "Capturer une zone sélectionnée"
+  },
+  "cmdRecord": {
+    "message": "Démarrer / arrêter un enregistrement vidéo"
+  }
+}

@@ -6,6 +6,7 @@
   <title>Réglages — LocalShot</title>
   <link rel="icon" href="../icons/icon-32.png">
   <link rel="stylesheet" href="app.css">
+  <script type="module" src="i18n.js"></script>
 </head>
 <body>
   <header class="topbar">
@@ -31,22 +32,43 @@
     <label class="check"><input id="auto" type="checkbox"> Enregistrer automatiquement chaque nouvelle capture et vidéo dans ce dossier</label>
     <p id="saveStatus" class="hint"></p>
 
+    <h2 id="transcription">Sous-titres automatiques</h2>
+    <p class="muted">Facultatif. Pour transcrire une vidéo, LocalShot envoie <b>uniquement le son</b> au service choisi, et seulement quand vous cliquez sur « Sous-titres ».
+      Avec « Whisper sur mon serveur », rien ne quitte vos machines.</p>
+    <form id="trForm" class="tr-form">
+      <label for="trProvider">Service</label>
+      <select id="trProvider"><option value="">Aucun (désactivé)</option></select>
+      <div id="trFields">
+        <label for="trUrl">Adresse de l'API <small class="muted">(compatible OpenAI : /v1/audio/transcriptions)</small></label>
+        <input id="trUrl" type="url" autocomplete="off" spellcheck="false">
+        <label for="trModel">Modèle</label>
+        <input id="trModel" autocomplete="off" spellcheck="false">
+        <label for="trKey">Clé API</label>
+        <input id="trKey" type="password" autocomplete="off" spellcheck="false">
+        <label for="trLang">Langue <small class="muted">(facultatif, ex. fr ; vide = détection automatique)</small></label>
+        <input id="trLang" maxlength="5" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="row"><button class="btn primary" type="submit">Enregistrer</button></div>
+    </form>
+    <p id="trStatus" class="hint"></p>
+
     <h2>Serveur de partage</h2>
-    <p class="muted">Le serveur reçoit <b>uniquement</b> les captures que vous partagez. Par défaut, c'est le petit serveur de ce Mac.
-      Vous pouvez indiquer votre Raspberry Pi (adresse Tailscale, par exemple <code>https://pi.tailnet-1234.ts.net</code>).</p>
+    <p class="muted">Facultatif. Sans serveur, rien ne quitte cet ordinateur. Pour envoyer des liens, indiquez <b>votre</b> serveur LocalShot :
+      Raspberry Pi (adresse Tailscale, par exemple <code>https://pi.tailnet-1234.ts.net</code>), NAS, VPS ou conteneur Docker.
+      Il reçoit <b>uniquement</b> les captures que vous partagez.</p>
 
     <form id="form">
       <label for="url">Adresse du serveur</label>
-      <input id="url" type="url" required placeholder="http://localhost:4777" autocomplete="off" spellcheck="false">
-      <label for="key">Clé d'accès <small class="muted">(vide pour le serveur de ce Mac)</small></label>
+      <input id="url" type="url" required placeholder="https://pi.tailnet-1234.ts.net" autocomplete="off" spellcheck="false">
+      <label for="key">Clé d'accès</label>
       <input id="key" type="password" autocomplete="off" spellcheck="false">
       <div class="row">
         <button class="btn primary" type="submit">Enregistrer et tester</button>
-        <button id="reset" class="btn" type="button">Revenir au serveur de ce Mac</button>
+        <button id="reset" class="btn" type="button">Oublier ce serveur</button>
       </div>
     </form>
     <p id="status" class="notice" hidden></p>
-    <p class="hint">Chrome vous demandera l'autorisation d'accéder à <b>cette seule adresse</b>. La clé reste dans Chrome, sur ce Mac.
+    <p class="hint">Chrome vous demandera l'autorisation d'accéder à <b>cette seule adresse</b>. La clé reste dans Chrome, sur cet ordinateur.
       Les captures non partagées ne quittent jamais votre ordinateur.</p>
   </main>
   <div id="toast" class="toast" hidden></div>

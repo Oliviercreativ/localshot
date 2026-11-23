@@ -1,0 +1,20 @@
+{
+  "extName": {
+    "message": "LocalShot — 100% local screenshots"
+  },
+  "extDescription": {
+    "message": "Screenshots and screen recordings stored only in your browser. Annotations, blur, trimming, sharing on your own server."
+  },
+  "cmdVisible": {
+    "message": "Capture the visible area"
+  },
+  "cmdFull": {
+    "message": "Capture the full page"
+  },
+  "cmdArea": {
+    "message": "Capture a selected area"
+  },
+  "cmdRecord": {
+    "message": "Start / stop a video recording"
+  }
+}

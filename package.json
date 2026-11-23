@@ -5,7 +5,6 @@
   "description": "Alternative open source et respectueuse de la vie privée à Loom : captures d'écran et vidéos locales, partage auto-hébergé.",
   "scripts": {
     "start": "node server/server.js",
-    "start:lan": "node server/server.js --lan",
     "icons": "node tools/make-icons.js",
     "test": "node --test server/test/*.test.js",
     "start:env": "node --env-file=.env server/server.js"

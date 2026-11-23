@@ -1,0 +1,10 @@
+.git
+extension
+data
+deploy
+node_modules
+*.env
+.env*
+.claude*
+.swarm
+server/test

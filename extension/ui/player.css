@@ -72,3 +72,12 @@
   .lsp-pip, .lsp-volbox .lsp-vol { display: none; }
   .lsp-big { width: 60px; height: 60px; }
 }
+
+/* Sous-titres */
+.lsp-cap { position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%); max-width: 86%; padding: 6px 12px; border-radius: 8px;
+  background: rgba(15,23,42,.82); color: #fff; font: 600 clamp(13px, 2.2vw, 20px)/1.35 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  text-align: center; pointer-events: none; transition: bottom .25s; }
+.lsp.is-idle .lsp-cap { bottom: 18px; }
+.lsp-cc[aria-pressed="true"] { color: var(--lsp-accent); }
+.lsp-marks { position: absolute; inset: 0; pointer-events: none; }
+.lsp-mark { position: absolute; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: #facc15; box-shadow: 0 0 0 2px rgba(15,23,42,.6); }

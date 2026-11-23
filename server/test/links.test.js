@@ -107,3 +107,47 @@ test('vignette et aperçu du lien : balises Open Graph échappées, rien pour un
   assert.ok(!locked.includes('og:title') && !locked.includes('Devis'), 'aucune information sur un lien protégé');
   assert.strictEqual((await fetch(`${ls.base}/t/${id}.webp`)).status, 404);
 });
+
+test('mot de passe : blocage après 5 erreurs, minimum 6 caractères', async (t) => {
+  const { ls, id, patch } = await setup(t);
+  assert.strictEqual((await patch({ password: 'abc' })).status, 400);
+  await patch({ password: 'bon-mot-de-passe' });
+  const unlock = (password) => fetch(`${ls.base}/api/captures/${id}/unlock`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
+  for (let i = 0; i < 6; i++) assert.strictEqual((await unlock('faux')).status, 401);
+  const r = await unlock('bon-mot-de-passe');
+  assert.strictEqual(r.status, 429, 'même le bon mot de passe attend après trop d\'erreurs');
+  assert.ok(Number(r.headers.get('retry-after')) > 0);
+});
+
+test('commentaires : visiteurs autorisés, propriétaire peut supprimer, désactivables', async (t) => {
+  const { ls, id, patch } = await setup(t);
+  const post = (body, headers = {}) => fetch(`${ls.base}/api/captures/${id}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) });
+  const r = await post({ name: 'Client <b>', text: 'À revoir', t: 12 });
+  assert.strictEqual(r.status, 201);
+  const cm = await r.json();
+  assert.strictEqual(cm.name, 'Client <b>', 'stocké tel quel, affiché en texte');
+  assert.strictEqual(cm.t, undefined, 'pas d\'horodatage sur une image');
+  assert.strictEqual((await post({ text: '   ' })).status, 400);
+  assert.strictEqual((await fetch(`${ls.base}/api/captures/${id}/comments/${cm.id}`, { method: 'DELETE' })).status, 401);
+  assert.strictEqual((await fetch(`${ls.base}/api/captures/${id}/comments/${cm.id}`, { method: 'DELETE', headers: auth })).status, 204);
+  await patch({ allowComments: false });
+  assert.strictEqual((await post({ text: 'encore' })).status, 403);
+  assert.deepStrictEqual((await (await fetch(`${ls.base}/api/captures/${id}`)).json()).comments, []);
+});
+
+test('chiffré de bout en bout : accepté, titre jamais stocké, servi tel quel', async (t) => {
+  const ls = startLocalShot();
+  t.after(() => ls.stop());
+  await ls.ready;
+  const body = Buffer.concat([Buffer.from('LSENC1'), Buffer.alloc(12, 1), Buffer.alloc(64, 2)]);
+  const r = await fetch(`${ls.base}/api/captures`, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/vnd.localshot.enc', 'X-Title': 'Secret', 'X-Source-Url': 'https%3A%2F%2Fexemple.fr' }, body });
+  assert.strictEqual(r.status, 201);
+  const meta = await r.json();
+  assert.strictEqual(meta.kind, 'enc');
+  assert.strictEqual(meta.title, 'Contenu chiffré');
+  assert.strictEqual(meta.sourceUrl, '');
+  const file = Buffer.from(await (await fetch(`${ls.base}/i/${meta.id}.bin`)).arrayBuffer());
+  assert.ok(file.equals(body));
+  const bad = await fetch(`${ls.base}/api/captures`, { method: 'POST', headers: { ...auth, 'Content-Type': 'application/vnd.localshot.enc' }, body: Buffer.from('pas chiffré du tout') });
+  assert.strictEqual(bad.status, 400);
+});

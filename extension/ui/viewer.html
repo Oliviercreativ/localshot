@@ -7,6 +7,8 @@
   <link rel="icon" href="../icons/icon-32.png">
   <link rel="stylesheet" href="app.css">
   <link rel="stylesheet" href="player.css">
+  <link rel="stylesheet" href="editor.css">
+  <script type="module" src="i18n.js"></script>
 </head>
 <body>
   <header class="topbar">
@@ -15,8 +17,13 @@
     <span class="pill">100&nbsp;% local</span>
     <div class="spacer"></div>
     <div class="actions">
+      <button id="annotate" class="btn">Annoter</button>
+      <button id="cut" class="btn" hidden>Découper / GIF</button>
+      <button id="subs" class="btn" hidden>Sous-titres</button>
       <button id="copyImg" class="btn primary">Copier l'image</button>
       <button id="download" class="btn">Télécharger</button>
+      <label class="e2e-opt" title="Le serveur ne reçoit qu'un fichier illisible ; la clé voyage dans le lien. Pas d'aperçu ni de vignette.">
+        <input id="e2e" type="checkbox"> Chiffré</label>
       <button id="share" class="btn">Partager</button>
       <button id="del" class="btn danger">Supprimer</button>
     </div>
@@ -27,11 +34,40 @@
       <button id="saveBannerBtn" class="btn primary">Autoriser et enregistrer</button>
     </div>
     <div id="stage" class="stage"><img id="img" alt="Capture d'écran"></div>
+    <div id="cutPanel" class="cut-panel" hidden>
+      <div class="cut-row">
+        <label>Début <input id="cutIn" class="cut-time" inputmode="decimal" aria-label="Début du segment"></label>
+        <button id="cutSetIn" class="btn" type="button">← Position actuelle</button>
+        <label>Fin <input id="cutOut" class="cut-time" inputmode="decimal" aria-label="Fin du segment"></label>
+        <button id="cutSetOut" class="btn" type="button">← Position actuelle</button>
+        <span id="cutLen" class="muted"></span>
+      </div>
+      <div class="cut-row">
+        <button id="cutApply" class="btn primary" type="button">Découper la vidéo</button>
+        <button id="gifExport" class="btn" type="button">Exporter en GIF</button>
+        <button id="cutClose" class="btn" type="button">Fermer</button>
+        <progress id="cutProgress" max="1" value="0" hidden></progress>
+        <button id="cutAbort" class="btn danger" type="button" hidden>Annuler</button>
+      </div>
+      <p class="hint">Placez-vous dans la vidéo puis « Position actuelle », ou tapez un temps (1:23,5). La découpe rejoue le segment : elle prend autant de temps que lui.
+        Le GIF fait 20 s au plus.</p>
+    </div>
+    <div id="trBar" class="tr-bar" hidden>
+      <b>Transcription</b><span class="muted">cliquez sur une phrase pour la corriger</span>
+      <div class="spacer"></div>
+      <progress id="trProgress" max="1" value="0" hidden></progress>
+      <button id="trRedo" class="btn" type="button">Refaire</button>
+      <button id="trSrt" class="btn" type="button">.srt</button>
+      <button id="trVtt" class="btn" type="button">.vtt</button>
+      <button id="trDel" class="btn danger" type="button">Supprimer</button>
+    </div>
+    <div id="transcript" class="transcript" hidden></div>
     <section class="details">
       <input id="title" class="title-input" maxlength="300" aria-label="Titre de la capture">
       <div class="meta">
         <span id="meta" class="muted"></span>
         <a id="source" class="source" target="_blank" rel="noopener noreferrer" hidden>URL source ↗</a>
+        <button id="restore" class="link-btn" hidden>Revenir à l'original</button>
       </div>
       <div id="shareBox" class="share" hidden>
         <label for="shareUrl">Lien de partage</label>
@@ -43,6 +79,7 @@
       </div>
       <p id="shareHint" class="hint"></p>
       <div id="linkOpts" class="link-opts" hidden></div>
+      <div id="comments" class="comments" hidden></div>
     </section>
   </main>
   <div id="toast" class="toast" hidden></div>

@@ -12,6 +12,7 @@ const ICONS = {
   full: '<path class="s" d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',
   exit: '<path class="s" d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/>',
   back: '<path class="s" d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4"/>',
+  cc: '<rect class="s" x="3" y="5" width="18" height="14" rx="2"/><path class="s" d="M10.5 10.2a2 2 0 1 0 0 3.6M16.5 10.2a2 2 0 1 0 0 3.6"/>',
 };
 const svg = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
 
@@ -36,9 +37,9 @@ function iconBtn(cls, label, icon) {
 
 /**
  * Crée le lecteur. Renvoie l'élément à insérer dans la page ; la balise <video> est dans `.video`.
- * @param {{ src: string, poster?: string, duration?: number, noDownload?: boolean }} opts
+ * @param {{ src: string, poster?: string, duration?: number, noDownload?: boolean, captions?: {start:number,end:number,text:string}[] }} opts
  */
-export function createPlayer({ src, poster, duration: knownDuration, noDownload = false }) {
+export function createPlayer({ src, poster, duration: knownDuration, noDownload = false, captions = null }) {
   const root = el('div', 'lsp is-paused', { tabindex: '0' });
   const video = el('video', 'lsp-video', { playsinline: '', preload: 'metadata' });
   video.src = src;
@@ -76,6 +77,8 @@ export function createPlayer({ src, poster, duration: knownDuration, noDownload 
     item.textContent = s === 1 ? 'Normale' : `${String(s).replace('.', ',')}×`;
     menu.append(item);
   }
+  const ccBtn = iconBtn('lsp-cc', 'Sous-titres (C)', 'cc');
+  const capBox = el('div', 'lsp-cap');
   const pip = iconBtn('lsp-pip', 'Image dans l\'image', 'pip');
   pip.hidden = !document.pictureInPictureEnabled;
   const full = iconBtn('lsp-full', 'Plein écran (F)', 'full');
@@ -87,10 +90,10 @@ export function createPlayer({ src, poster, duration: knownDuration, noDownload 
   speedBox.append(speed, menu);
   const controls = el('div', 'lsp-controls');
   const row = el('div', 'lsp-row');
-  row.append(play, volBox, time, spacer, speedBox, pip, full);
+  row.append(play, volBox, time, spacer, ccBtn, speedBox, pip, full);
   controls.append(bar, row);
 
-  root.append(video, big, replay, controls);
+  root.append(video, capBox, big, replay, controls);
 
   // ---------- Durée ----------
   // Les WebM de MediaRecorder n'annoncent pas leur durée : on la fait calculer par le navigateur.
@@ -237,13 +240,49 @@ export function createPlayer({ src, poster, duration: knownDuration, noDownload 
   video.addEventListener('play', wake);
   video.addEventListener('pause', () => root.classList.remove('is-idle'));
 
+  // ---------- Sous-titres ----------
+  let caps = [];
+  let capsOn = true;
+  try { capsOn = localStorage.getItem('localshot-cc') !== '0'; } catch { /* stockage indisponible */ }
+  function syncCaps() {
+    const t = video.currentTime;
+    const cur = capsOn ? caps.find((x) => t >= x.start && t < x.end) : null;
+    capBox.textContent = cur ? cur.text : '';
+    capBox.hidden = !cur;
+    ccBtn.hidden = !caps.length;
+    ccBtn.setAttribute('aria-pressed', String(capsOn));
+  }
+  ccBtn.addEventListener('click', () => {
+    capsOn = !capsOn;
+    try { localStorage.setItem('localshot-cc', capsOn ? '1' : '0'); } catch { /* stockage indisponible */ }
+    syncCaps();
+  });
+  video.addEventListener('timeupdate', syncCaps);
+  video.addEventListener('seeked', syncCaps);
+  root.setCaptions = (list) => { caps = Array.isArray(list) ? list : []; syncCaps(); };
+  // Repères (commentaires horodatés) sur la barre de progression.
+  let markTimes = [];
+  const marks = el('div', 'lsp-marks');
+  track.append(marks);
+  function paintMarks() {
+    const d = duration();
+    marks.replaceChildren(...(d ? markTimes : []).map((t) => {
+      const m = el('i', 'lsp-mark');
+      m.style.left = `${Math.min(100, (t / d) * 100)}%`;
+      return m;
+    }));
+  }
+  video.addEventListener('durationchange', paintMarks);
+  root.setMarkers = (times) => { markTimes = Array.isArray(times) ? times : []; paintMarks(); };
+  root.setCaptions(captions);
+
   // ---------- Clavier (quand le lecteur a le focus) ----------
   root.addEventListener('keydown', (e) => {
     if (e.target === vol || e.metaKey || e.ctrlKey || e.altKey) return;
     const k = e.key.toLowerCase();
     const seek = (dt) => { video.currentTime = Math.min(duration(), Math.max(0, video.currentTime + dt)); };
     const actions = {
-      ' ': toggle, k: toggle, f: toggleFull, m: () => mute.click(),
+      ' ': toggle, k: toggle, f: toggleFull, m: () => mute.click(), c: () => caps.length && ccBtn.click(),
       arrowleft: () => seek(-5), arrowright: () => seek(5), j: () => seek(-10), l: () => seek(10),
       arrowup: () => { video.muted = false; video.volume = Math.min(1, video.volume + 0.1); },
       arrowdown: () => { video.volume = Math.max(0, video.volume - 0.1); },
@@ -260,5 +299,6 @@ export function createPlayer({ src, poster, duration: knownDuration, noDownload 
   syncTime();
   syncVol();
   root.video = video;
+  root.seekTo = (t) => { video.currentTime = Math.max(0, Math.min(duration() || t, t)); wake(); };
   return root;
 }

@@ -4,8 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>LocalShot — Captures partagées</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#f97316">
+  <link rel="apple-touch-icon" href="/assets/icon-192.png">
   <link rel="icon" href="/assets/icon.png">
   <link rel="stylesheet" href="/assets/app.css">
+  <script type="module" src="/assets/i18n.js"></script>
 </head>
 <body>
   <header class="topbar">
@@ -13,6 +17,9 @@
     <span class="pill">100&nbsp;% local</span>
     <div class="spacer"></div>
     <input id="q" class="search" type="search" placeholder="Rechercher une capture…" autocomplete="off">
+    <button id="install" class="btn" hidden>Installer l'application</button>
+    <label class="btn primary" for="upload">Ajouter</label>
+    <input id="upload" type="file" accept="image/png,video/mp4,video/webm" multiple hidden>
     <button id="logout" class="btn" hidden>Se déconnecter</button>
   </header>
   <main class="wrap">
@@ -34,5 +41,6 @@
   </main>
   <div id="toast" class="toast" hidden></div>
   <script type="module" src="/assets/gallery.js"></script>
+  <script type="module" src="/assets/pwa.js"></script>
 </body>
 </html>

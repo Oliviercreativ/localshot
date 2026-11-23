@@ -18,13 +18,15 @@ function card(c) {
     toast('Capture supprimée');
   });
   const link = h('a', { class: 'card-link', href: `/c/${c.id}` },
-    isVideo(c)
+    c.kind === 'enc'
+      ? h('div', { class: 'thumb is-enc' }, h('span', {}, '🔒'))
+      : isVideo(c)
       ? h('div', { class: 'thumb is-video' }, thumbUrl(c) ? h('img', { src: thumbUrl(c), decoding: 'async', alt: '' }) : h('video', { src: `${fileUrl(c)}#t=0.5`, preload: 'metadata', muted: '', playsinline: '' }),
           h('span', { class: 'play' }, '▶'), h('span', { class: 'dur' }, fmtDuration(c.duration)))
       : h('div', { class: 'thumb' }, h('img', { src: fileUrl(c), decoding: 'async', alt: '' })),
     h('div', { class: 'card-body' },
       h('div', { class: 'card-title' }, c.title),
-      h('div', { class: 'card-meta' }, `${fmtDate(c.createdAt)} · ${isVideo(c) ? `Vidéo ${fmtDuration(c.duration)}` : `${c.width}×${c.height}`} · ${c.views || 0} vue${c.views > 1 ? "s" : ""}${c.hasPassword ? " · 🔒" : ""}${c.expiresAt ? " · expire le " + fmtDate(c.expiresAt) : ""}`)));
+      h('div', { class: 'card-meta' }, `${fmtDate(c.createdAt)} · ${c.kind === 'enc' ? 'chiffré de bout en bout' : isVideo(c) ? `Vidéo ${fmtDuration(c.duration)}` : `${c.width}×${c.height}`} · ${c.views || 0} vue${c.views > 1 ? "s" : ""}${c.hasPassword ? " · 🔒" : ""}${c.expiresAt ? " · expire le " + fmtDate(c.expiresAt) : ""}`)));
   return h('article', { class: 'card' }, link, del);
 }
 
@@ -49,11 +51,56 @@ document.getElementById('kind').addEventListener('click', (e) => {
   render();
 });
 syncKind();
+// Ajout de fichiers depuis l'ordinateur (bouton, glisser-déposer, ou « Partager vers » LocalShot installé).
+async function uploadFiles(files) {
+  const ok = [...files].filter((f) => ['image/png', 'video/mp4', 'video/webm'].includes(f.type));
+  if (!ok.length) return toast('Formats acceptés : PNG, MP4, WebM', 'error');
+  for (const f of ok) {
+    toast(`Envoi de « ${f.name} »…`);
+    const meta = await fileMeta(f);
+    const r = await fetch('/api/captures', { method: 'POST', body: f, headers: {
+      'Content-Type': f.type, 'X-Title': encodeURIComponent(f.name.replace(/\.[^.]+$/, '')),
+      'X-Width': String(meta.width || 0), 'X-Height': String(meta.height || 0), 'X-Duration': String(meta.duration || 0) } });
+    if (!r.ok) { toast(`« ${f.name} » refusé : ${(await r.json().catch(() => ({}))).error || r.status}`, 'error'); continue; }
+    items.unshift(await r.json());
+    render();
+  }
+  toast('Ajouté');
+}
+function fileMeta(f) {
+  if (!f.type.startsWith('video/')) return Promise.resolve({});
+  return new Promise((resolve) => {
+    const v = document.createElement('video');
+    v.preload = 'metadata';
+    v.onloadedmetadata = () => { resolve({ width: v.videoWidth, height: v.videoHeight, duration: Number.isFinite(v.duration) ? v.duration : 0 }); URL.revokeObjectURL(v.src); };
+    v.onerror = () => resolve({});
+    v.src = URL.createObjectURL(f);
+  });
+}
+// Fichiers reçus par « Partager vers LocalShot » (mis de côté par le service worker).
+async function receiveShared() {
+  if (!new URLSearchParams(location.search).has('partage') || !('caches' in window)) return;
+  history.replaceState(null, '', '/');
+  const box = await caches.open('localshot-share');
+  const files = [];
+  for (const req of await box.keys()) {
+    const r = await box.match(req);
+    files.push(new File([await r.blob()], decodeURIComponent(r.headers.get('X-Name') || 'capture'), { type: r.headers.get('Content-Type') || '' }));
+    await box.delete(req);
+  }
+  if (files.length) uploadFiles(files);
+}
+document.getElementById('upload').addEventListener('change', (e) => { uploadFiles(e.target.files); e.target.value = ''; });
+document.addEventListener('dragover', (e) => { e.preventDefault(); document.body.classList.add('dropping'); });
+document.addEventListener('dragleave', (e) => { if (!e.relatedTarget) document.body.classList.remove('dropping'); });
+document.addEventListener('drop', (e) => { e.preventDefault(); document.body.classList.remove('dropping'); uploadFiles(e.dataTransfer.files); });
+
 q.addEventListener('input', render);
 
 const [list, health] = await Promise.all([fetch('/api/captures').then((r) => r.json()), fetch('/api/health').then((r) => r.json())]);
 items = list;
 render();
+receiveShared();
 
 if (health.auth) {
   const out = document.getElementById('logout');
@@ -62,12 +109,10 @@ if (health.auth) {
 }
 
 if (health.publicUrl) {
-  lan.textContent = `Serveur privé (${new URL(health.publicUrl).host}) : accessible uniquement depuis vos appareils connectés à Tailscale.`;
+  lan.textContent = /\.ts\.net$/i.test(new URL(health.publicUrl).hostname)
+    ? `Serveur privé (${new URL(health.publicUrl).host}) : accessible uniquement depuis vos appareils connectés à Tailscale.`
+    : `Serveur ${new URL(health.publicUrl).host} : les liens de partage sont ouverts à toute personne qui les reçoit. La galerie reste protégée par la clé.`;
   lan.classList.add('subtle');
-} else if (health.lan && health.addresses.length) {
-  lan.textContent = `Partage réseau actif : les liens de partage s'ouvrent depuis le téléphone ou un autre Mac connecté au même Wi-Fi (http://${health.addresses[0]}:${health.port}/c/…). La galerie reste privée.`;
-} else {
-  lan.textContent = 'Mode privé : tout reste sur ce Mac. Pour partager sur votre Wi-Fi (téléphone, autre Mac), relancez le serveur avec « npm run start:lan ».';
-  lan.classList.add('subtle');
+  lan.hidden = false;
 }
-lan.hidden = false;
+

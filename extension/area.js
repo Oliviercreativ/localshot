@@ -9,7 +9,7 @@
   const box = mk(`position:fixed;display:none;box-sizing:border-box;border:2px solid #f97316;box-shadow:0 0 0 100vmax ${DIM};pointer-events:none;`);
   const size = mk('position:fixed;display:none;padding:3px 7px;border-radius:6px;background:#f97316;color:#fff;font:600 11px/1.2 ui-monospace,Menlo,monospace;pointer-events:none;');
   const hint = mk('position:fixed;top:16px;left:50%;transform:translateX(-50%);padding:9px 16px;border-radius:999px;background:#0f172a;color:#fff;font:500 13px/1.2 -apple-system,system-ui,sans-serif;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.25);',
-    'Glissez pour sélectionner une zone · Échap pour annuler');
+    (chrome.i18n?.getUILanguage?.() || navigator.language).toLowerCase().startsWith('fr') ? 'Glissez pour sélectionner une zone · Échap pour annuler' : 'Drag to select an area · Esc to cancel');
   root.append(box, size, hint);
   document.documentElement.append(root);
 

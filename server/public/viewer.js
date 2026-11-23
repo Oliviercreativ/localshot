@@ -1,6 +1,9 @@
 import { createPlayer } from '/assets/player.js';
 import { h, fmtDate, fmtSize, fmtDuration, isVideo, fileUrl, thumbUrl, toast, copyText } from '/assets/common.js';
 import { linkOptions } from '/assets/linkopts.js';
+import { renderTranscript } from '/assets/transcript.js';
+import { renderComments } from '/assets/comments.js';
+import { decryptCapture, keyFromHash } from '/assets/e2e.js';
 
 const $ = (id) => document.getElementById(id);
 const id = location.pathname.split('/').pop();
@@ -34,24 +37,43 @@ if (!c) {
     $('pw').select();
   });
 } else {
+  // Contenu chiffré de bout en bout : déchiffré ici avec la clé du lien (#k=…), jamais vue par le serveur.
+  if (c.kind === 'enc') {
+    const key = keyFromHash(location.hash);
+    const fail = (title, msg) => {
+      document.querySelector('.stage').replaceChildren(h('div', { class: 'center-msg dark' }, h('h1', {}, title), h('p', {}, msg)));
+    };
+    if (!key) fail('Lien incomplet', 'La clé de déchiffrement manque à la fin du lien (#k=…). Demandez le lien complet.');
+    else {
+      try {
+        const buf = await (await fetch(fileUrl(c))).arrayBuffer();
+        const { meta, blob } = await decryptCapture(buf, key);
+        Object.assign(c, { title: meta.title || 'Capture', kind: meta.kind, mime: meta.mime, width: meta.width, height: meta.height, duration: meta.duration, size: blob.size, decrypted: URL.createObjectURL(blob), e2e: true });
+        c.captions = Array.isArray(meta.captions) ? meta.captions : undefined;
+      } catch (e) {
+        fail('Impossible de déchiffrer', `${e.message}. Vérifiez que le lien est complet.`);
+      }
+    }
+  }
   document.title = `${c.title} — LocalShot`;
   const img = $('img');
   if (isVideo(c)) {
-    const player = createPlayer({ src: fileUrl(c), poster: thumbUrl(c) || undefined, duration: c.duration, noDownload: !c.canEdit && c.allowDownload === false });
+    const player = createPlayer({ src: c.decrypted || fileUrl(c), poster: thumbUrl(c) || undefined, duration: c.duration, captions: c.captions, noDownload: !c.canEdit && c.allowDownload === false });
     img.replaceWith(player);
+    if (c.captions?.length) renderTranscript($('transcript'), c.captions, player);
     player.focus({ preventScroll: true });
-  } else {
-    img.src = fileUrl(c);
+  } else if (img && c.kind !== 'enc') {
+    img.src = c.decrypted || fileUrl(c);
     img.addEventListener('click', () => $('stage').classList.toggle('zoomed'));
   }
 
   const title = $('title');
   title.value = c.title;
-  title.readOnly = !c.canEdit;
+  title.readOnly = !c.canEdit || c.e2e || c.kind === 'enc'; // un titre chiffré ne doit pas être renvoyé en clair
   if (c.canEdit) {
     $('back').hidden = false;
     $('del').hidden = false;
-    title.addEventListener('change', async () => {
+    if (!title.readOnly) title.addEventListener('change', async () => {
       const r = await fetch(`/api/captures/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: title.value }) });
       if (r.ok) { const u = await r.json(); title.value = u.title; document.title = `${u.title} — LocalShot`; toast('Titre enregistré'); }
     });
@@ -68,18 +90,14 @@ if (!c) {
     s.hidden = false;
   }
 
-  // Lien de partage : l'IP du réseau local si le mode LAN est actif
-  const onThisMac = ['localhost', '127.0.0.1'].includes(location.hostname);
+  // Lien de partage : l'adresse publique du serveur si elle est réglée
   let share = location.href.split('#')[0];
-  if (health.publicUrl) share = `${health.publicUrl}/c/${id}`;
-  else if (health.lan && health.addresses.length && onThisMac) share = `http://${health.addresses[0]}:${health.port}/c/${id}`;
+  if (health.publicUrl) share = `${health.publicUrl}/c/${id}${c.e2e ? location.hash : ''}`;
   const shareInput = $('shareUrl');
   shareInput.value = share;
-  $('shareHint').textContent = health.publicUrl
-    ? 'Accessible depuis vos appareils connectés à Tailscale.'
-    : !health.lan && onThisMac
-      ? 'Ce lien ne fonctionne que sur ce Mac. Lancez « npm run start:lan » pour le partager sur votre Wi-Fi.'
-      : 'Accessible depuis les appareils connectés au même réseau Wi-Fi.';
+  $('shareHint').textContent = /\.ts\.net$/i.test(new URL(share).hostname)
+    ? 'Accessible uniquement depuis vos appareils connectés à Tailscale.'
+    : 'Accessible par toute personne qui a le lien.';
 
   $('copyLink').addEventListener('click', async () => {
     try { await copyText(share, shareInput); toast('Lien copié'); } catch { toast('Copie impossible', 'error'); }
@@ -97,9 +115,14 @@ if (!c) {
   } else copyImg.hidden = true;
 
   $('download').href = `${fileUrl(c)}?dl=1`;
+  if (c.e2e) Object.assign($('download'), { href: c.decrypted, download: `${c.title.replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 80)}.${c.mime === 'video/webm' ? 'webm' : c.kind === 'video' ? 'mp4' : 'png'}` });
+  if (c.kind === 'enc') $('download').hidden = $('copyImg').hidden = true;
   if (!c.canEdit && c.allowDownload === false) { $('download').hidden = true; copyImg.hidden = true; }
   if (!c.canEdit) document.querySelector('.share').hidden = true; // le visiteur a déjà le lien : « Copier le lien » suffit
   if (c.canEdit) linkOptions($('linkOpts'), c, { request: (u, o) => fetch(u, o), notify: toast });
+  if (c.canEdit || c.allowComments) {
+    renderComments($('comments'), c, { request: (u, o) => fetch(u, o), player: document.querySelector('.lsp'), owner: !!c.canEdit, notify: toast });
+  }
 
   $('del').addEventListener('click', async () => {
     if (!confirm(`Supprimer ${isVideo(c) ? 'cette vidéo' : 'cette capture'} ? Cette action est définitive.`)) return;

@@ -62,7 +62,7 @@ export async function folderAccess(request = false) {
   return st === 'granted' ? 'granted' : 'prompt';
 }
 
-const ext = (c) => (c.kind !== 'video' ? 'png' : c.mime === 'video/mp4' ? 'mp4' : 'webm');
+const ext = (c) => c.ext || (c.kind !== 'video' ? 'png' : c.mime === 'video/mp4' ? 'mp4' : 'webm');
 export function baseName(c) {
   const t = c.title.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80) || 'capture';
   return `${t} — ${c.createdAt.slice(0, 19).replace(/[T:]/g, '-')}.${ext(c)}`;

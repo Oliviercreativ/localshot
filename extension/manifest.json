@@ -1,17 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "LocalShot — captures 100 % locales",
-  "version": "0.8.0",
-  "description": "Captures d'écran et vidéos (onglet, fenêtre, écran) stockées uniquement dans votre navigateur.",
+  "name": "__MSG_extName__",
+  "version": "0.9.0",
+  "description": "__MSG_extDescription__",
   "permissions": [
     "activeTab",
     "scripting",
     "downloads",
     "unlimitedStorage",
     "sidePanel"
-  ],
-  "host_permissions": [
-    "http://localhost:4777/*"
   ],
   "background": {
     "service_worker": "background.js",
@@ -41,29 +38,30 @@
       "suggested_key": {
         "default": "Alt+Shift+V"
       },
-      "description": "Capturer la partie visible"
+      "description": "__MSG_cmdVisible__"
     },
     "capture-full": {
       "suggested_key": {
         "default": "Alt+Shift+F"
       },
-      "description": "Capturer la page entière"
+      "description": "__MSG_cmdFull__"
     },
     "capture-area": {
       "suggested_key": {
         "default": "Alt+Shift+S"
       },
-      "description": "Capturer une zone sélectionnée"
+      "description": "__MSG_cmdArea__"
     },
     "record-video": {
       "suggested_key": {
         "default": "Alt+Shift+R"
       },
-      "description": "Démarrer / arrêter un enregistrement vidéo"
+      "description": "__MSG_cmdRecord__"
     }
   },
   "optional_host_permissions": [
     "http://*/*",
     "https://*/*"
-  ]
+  ],
+  "default_locale": "fr"
 }

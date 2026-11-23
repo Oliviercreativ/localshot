@@ -4,10 +4,10 @@
  * LocalShot — serveur local (aucune dépendance, aucune connexion sortante).
  * Stocke les captures dans ./data et sert la galerie + les liens de partage.
  *
- *   npm start        → accessible uniquement depuis ce Mac (127.0.0.1)
- *   npm run start:lan → liens de partage accessibles sur le réseau local (Wi-Fi)
+ *   npm start        → écoute sur 127.0.0.1 (derrière tailscale serve, un proxy HTTPS ou Docker)
  *
- * Mode serveur (Raspberry Pi derrière `tailscale serve`) — variables d'environnement :
+ * Variables d'environnement :
+ *   LOCALSHOT_HOST       adresse d'écoute (127.0.0.1 par défaut ; 0.0.0.0 dans un conteneur Docker).
  *   LOCALSHOT_TOKEN      clé d'accès : obligatoire pour lister / envoyer / supprimer.
  *                        Quand elle est définie, être « en local » ne suffit plus
  *                        (tailscale serve relaie tout depuis 127.0.0.1).
@@ -19,12 +19,10 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const os = require('node:os');
 const createStorage = require('./storage');
 
 const PORT = Number(process.env.PORT) || 4777;
-const LAN = process.argv.includes('--lan') || process.env.LAN === '1';
-const HOST = LAN ? '0.0.0.0' : '127.0.0.1';
+const HOST = process.env.LOCALSHOT_HOST || '127.0.0.1';
 const TOKEN = (process.env.LOCALSHOT_TOKEN || '').trim();
 if (TOKEN && TOKEN.length < 24) { console.error('✖ LOCALSHOT_TOKEN trop courte (24 caractères minimum).'); process.exit(1); }
 let PUBLIC_URL = null;
@@ -45,8 +43,10 @@ const KINDS = {
   'image/png': { kind: 'image', ext: 'png', max: 80 * MB, ok: (b) => b.length >= 24 && b.subarray(0, 8).equals(PNG_SIG) && b.toString('ascii', 12, 16) === 'IHDR' },
   'video/mp4': { kind: 'video', ext: 'mp4', max: 2048 * MB, ok: (b) => b.length >= 12 && b.toString('ascii', 4, 8) === 'ftyp' },
   'video/webm': { kind: 'video', ext: 'webm', max: 2048 * MB, ok: (b) => b.length >= 4 && b.readUInt32BE(0) === 0x1a45dfa3 },
+  // Contenu chiffré de bout en bout : le serveur ne peut ni le lire ni connaître son titre.
+  'application/vnd.localshot.enc': { kind: 'enc', ext: 'bin', max: 2048 * MB, ok: (b) => b.length >= 18 && b.toString('ascii', 0, 6) === 'LSENC1' },
 };
-const MIME_OF = { png: 'image/png', mp4: 'video/mp4', webm: 'video/webm' };
+const MIME_OF = { png: 'image/png', mp4: 'video/mp4', webm: 'video/webm', bin: 'application/octet-stream' };
 const ID_RE = '([A-Za-z0-9_-]{6,32})';
 
 const THUMBS_DIR = path.join(DATA_DIR, 'thumbs');
@@ -86,14 +86,30 @@ try { SECRET = fs.readFileSync(SECRET_FILE); }
 catch { SECRET = crypto.randomBytes(32); fs.writeFileSync(SECRET_FILE, SECRET, { mode: 0o600 }); }
 
 const expired = (c) => !!c.expiresAt && Date.parse(c.expiresAt) <= Date.now();
-const hashPassword = (pw) => {
+async function hashPassword(pw) {
   const salt = crypto.randomBytes(16);
-  return `${salt.toString('hex')}:${crypto.scryptSync(pw, salt, 32).toString('hex')}`;
-};
-function checkPassword(pw, stored) {
+  return `${salt.toString('hex')}:${(await scrypt(pw, salt)).toString('hex')}`;
+}
+const scrypt = (pw, salt) => new Promise((res, rej) => crypto.scrypt(String(pw), salt, 32, (e, k) => (e ? rej(e) : res(k))));
+async function checkPassword(pw, stored) {
   const [salt, hash] = String(stored).split(':');
   if (!salt || !hash) return false;
-  return sameSecret(crypto.scryptSync(String(pw), Buffer.from(salt, 'hex'), 32), Buffer.from(hash, 'hex'));
+  return sameSecret(await scrypt(pw, Buffer.from(salt, 'hex')), Buffer.from(hash, 'hex'));
+}
+// Essais de mot de passe : 5 erreurs par lien et par adresse, puis attente croissante (jusqu'à 1 h).
+// 50 erreurs sur un même lien, toutes adresses confondues, le bloquent 1 h aussi.
+const failures = new Map(); // clé -> { n, until }
+function blockedFor(key) {
+  const f = failures.get(key);
+  return f && f.until > Date.now() ? Math.ceil((f.until - Date.now()) / 1000) : 0;
+}
+function fail(key, free, max) {
+  const f = failures.get(key) || { n: 0, until: 0 };
+  f.n += 1;
+  if (f.n > free) f.until = Date.now() + Math.min(3600_000, 30_000 * 2 ** Math.min(7, f.n - free - 1));
+  if (f.n >= max) f.until = Date.now() + 3600_000;
+  failures.set(key, f);
+  if (failures.size > 10_000) failures.delete(failures.keys().next().value);
 }
 // Le jeton dépend du mot de passe : le changer ou le retirer invalide les accès déjà donnés.
 const unlockToken = (c) => crypto.createHmac('sha256', SECRET).update(`${c.id}:${c.password}`).digest('base64url');
@@ -106,7 +122,7 @@ const unlocked = (req, c) => {
 // Ce que voit le propriétaire : tout, sauf l'empreinte du mot de passe.
 function adminView(c) {
   const { password, ...rest } = c;
-  return { ...rest, hasPassword: !!password, allowDownload: c.allowDownload !== false, views: c.views || 0, canEdit: true };
+  return { ...rest, hasPassword: !!password, allowDownload: c.allowDownload !== false, allowComments: c.allowComments !== false, comments: c.comments || [], views: c.views || 0, canEdit: true };
 }
 // Les vues sont enregistrées par paquets pour ne pas réécrire l'index à chaque visite.
 let viewsTimer;
@@ -117,26 +133,11 @@ function countView(c) {
 }
 
 // ---------- Sécurité ----------
-function lanAddresses() {
-  return Object.values(os.networkInterfaces())
-    .flat()
-    .filter((i) => i && (i.family === 'IPv4' || i.family === 4) && !i.internal)
-    .map((i) => i.address);
-}
-
-function hostnames() {
-  const h = os.hostname().toLowerCase();
-  const base = h.replace(/\.local$/, '');
-  return new Set([h, base, base + '.local']);
-}
-
 // Protection contre le DNS rebinding : seul un Host connu est accepté.
 function hostAllowed(req) {
   const host = (req.headers.host || '').toLowerCase().replace(/:\d+$/, '').replace(/^\[|\]$/g, '');
   if (['localhost', '127.0.0.1', '::1'].includes(host)) return true;
-  if (PUBLIC_HOST && host === PUBLIC_HOST) return true;
-  if (!LAN) return false;
-  return lanAddresses().includes(host) || hostnames().has(host);
+  return !!PUBLIC_HOST && host === PUBLIC_HOST;
 }
 
 function isLocal(req) {
@@ -281,7 +282,7 @@ async function upload(req, res) {
       if (!out.write(chunk)) await new Promise((r) => out.once('drain', r));
     }
     await new Promise((r, j) => out.end((e) => (e ? j(e) : r())));
-    if (!k.ok(head)) { const e = new Error(`${k.kind === 'image' ? 'PNG' : 'Vidéo'} invalide`); e.status = 400; throw e; }
+    if (!k.ok(head)) { const e = new Error(`${{ image: 'PNG', video: 'Vidéo', enc: 'Contenu chiffré' }[k.kind]} invalide`); e.status = 400; throw e; }
     await storage.current.put({ id, ext: k.ext, tmp, size, mime: type });
   } catch (e) {
     out.destroy();
@@ -297,8 +298,8 @@ async function upload(req, res) {
     kind: k.kind,
     ext: k.ext,
     storage: storage.current.name,
-    title: decodeHeader(req.headers['x-title'], 300) || 'Capture sans titre',
-    sourceUrl: /^(https?|file):\/\//i.test(src) ? src : '',
+    title: k.kind === 'enc' ? 'Contenu chiffré' : decodeHeader(req.headers['x-title'], 300) || 'Capture sans titre',
+    sourceUrl: k.kind !== 'enc' && /^(https?|file):\/\//i.test(src) ? src : '',
     mode: decodeHeader(req.headers['x-mode'], 20),
     width: k.kind === 'image' ? head.readUInt32BE(16) : num(req.headers['x-width'], 10000),
     height: k.kind === 'image' ? head.readUInt32BE(20) : num(req.headers['x-height'], 10000),
@@ -311,11 +312,27 @@ async function upload(req, res) {
   json(res, 201, meta);
 }
 
+// Sous-titres : [{ start, end, text }] en secondes ; tout le reste est ignoré.
+function cleanCaptions(v) {
+  if (v === null) return [];
+  if (!Array.isArray(v) || v.length > 10_000) return null;
+  const out = [];
+  for (const x of v) {
+    const start = Number(x?.start), end = Number(x?.end);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end < start || end > 86400) return null;
+    const text = String(x?.text ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 1000);
+    if (text) out.push({ start, end, text });
+  }
+  return out;
+}
+
 // Ce que voit un visiteur anonyme d'un lien de partage : pas de chemin local (file://) ni de détails internes.
 function publicView(c) {
-  const { id, kind, ext, title, width, height, duration, size, createdAt, thumb } = c;
+  const { id, kind, ext, title, width, height, duration, size, createdAt, thumb, captions } = c;
   const sourceUrl = /^https?:\/\//i.test(c.sourceUrl || '') ? c.sourceUrl : '';
-  return { id, kind, ext, title, width, height, duration, size, createdAt, thumb, sourceUrl, allowDownload: c.allowDownload !== false, canEdit: false };
+  const allowComments = c.allowComments !== false;
+  return { id, kind, ext, title, width, height, duration, size, createdAt, thumb, captions, sourceUrl, allowDownload: c.allowDownload !== false,
+    allowComments, comments: allowComments ? c.comments || [] : [], canEdit: false };
 }
 
 function serveFile(req, res, c, download) {
@@ -338,14 +355,14 @@ async function viewerPage(res, c) {
   try { html = await fsp.readFile(path.join(PUBLIC, 'viewer.html'), 'utf8'); } catch { return send(res, 404, 'Introuvable'); }
   if (!c.password) {
     const video = c.kind === 'video';
-    const desc = video ? `Vidéo de ${Math.floor((c.duration || 0) / 60)} min ${String(Math.round(c.duration || 0) % 60).padStart(2, '0')} s` : 'Capture d\'écran';
+    const desc = c.kind === 'enc' ? 'Contenu chiffré de bout en bout' : video ? `Vidéo de ${Math.floor((c.duration || 0) / 60)} min ${String(Math.round(c.duration || 0) % 60).padStart(2, '0')} s` : 'Capture d\'écran';
     const tags = [
       `<meta property="og:title" content="${esc(c.title)}">`,
       `<meta property="og:description" content="${esc(desc)} · LocalShot">`,
       `<meta property="og:type" content="${video ? 'video.other' : 'website'}">`,
       '<meta property="og:site_name" content="LocalShot">',
     ];
-    const img = c.thumb ? `/t/${c.id}.${c.thumb}` : !video ? `/i/${c.id}.png` : null;
+    const img = c.thumb ? `/t/${c.id}.${c.thumb}` : c.kind === 'image' ? `/i/${c.id}.png` : null;
     if (img && PUBLIC_URL) {
       tags.push(`<meta property="og:image" content="${esc(PUBLIC_URL + img)}">`, '<meta name="twitter:card" content="summary_large_image">');
       tags.push(`<meta property="og:url" content="${esc(`${PUBLIC_URL}/c/${c.id}`)}">`);
@@ -390,7 +407,7 @@ const server = http.createServer(async (req, res) => {
       if (expired(c) && !local) return file(res, 'expired.html', 410);
       return viewerPage(res, c);
     }
-    if (['GET', 'HEAD'].includes(method) && (m = p.match(new RegExp(`^/i/${ID_RE}\\.(png|mp4|webm)$`)))) {
+    if (['GET', 'HEAD'].includes(method) && (m = p.match(new RegExp(`^/i/${ID_RE}\\.(png|mp4|webm|bin)$`)))) {
       const c = find(m[1]);
       if (!c || (c.ext || 'png') !== m[2] || (!local && expired(c))) return send(res, 404, 'Introuvable');
       if (!local && !unlocked(req, c)) return send(res, 401, 'Mot de passe requis');
@@ -407,9 +424,14 @@ const server = http.createServer(async (req, res) => {
       } catch { return send(res, 404, 'Introuvable'); }
     }
     if (method === 'GET' && (m = p.match(/^\/assets\/([\w.-]+)$/))) return file(res, m[1]);
+    // Application installable (PWA)
+    if (method === 'GET' && p === '/manifest.webmanifest') return file(res, 'manifest.webmanifest');
+    if (method === 'GET' && p === '/sw.js') return file(res, 'sw.js');
+    // « Partager vers LocalShot » depuis le système (application installée) : on renvoie vers la galerie.
+    if (method === 'POST' && p === '/share-target') { req.resume(); return send(res, 303, '', 'text/plain', { Location: '/?partage=1' }); }
 
     if (p === '/api/health') {
-      return json(res, 200, { ok: true, app: 'localshot', lan: LAN, port: PORT, addresses: LAN ? lanAddresses() : [], local, auth: !!TOKEN, publicUrl: PUBLIC_URL, storage: storage.current.name });
+      return json(res, 200, { ok: true, app: 'localshot', port: PORT, local, auth: !!TOKEN, publicUrl: PUBLIC_URL, storage: storage.current.name });
     }
 
     if (p === '/api/captures') {
@@ -425,11 +447,52 @@ const server = http.createServer(async (req, res) => {
       if (!c.password) return json(res, 204);
       let body = {};
       try { body = JSON.parse((await readBody(req, 2000)).toString('utf8') || '{}'); } catch { return json(res, 400, { error: 'JSON invalide' }); }
-      if (typeof body.password !== 'string' || !checkPassword(body.password, c.password)) {
+      const ipKey = `${c.id}|${req.socket.remoteAddress}|${req.headers['x-forwarded-for'] || ''}`;
+      const wait = Math.max(blockedFor(ipKey), blockedFor(c.id));
+      if (wait) return send(res, 429, JSON.stringify({ error: `Trop d'essais : réessayez dans ${Math.ceil(wait / 60)} min` }), 'application/json; charset=utf-8', { 'Retry-After': String(wait) });
+      if (typeof body.password !== 'string' || !(await checkPassword(body.password, c.password))) {
+        fail(ipKey, 5, Infinity);
+        fail(c.id, 50, 50);
         await new Promise((r) => setTimeout(r, 800)); // ralentit les essais au hasard
         return json(res, 401, { error: 'Mot de passe incorrect' });
       }
+      failures.delete(ipKey);
       return send(res, 204, '', 'text/plain', { 'Set-Cookie': `${unlockCookie(c)}=${unlockToken(c)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${7 * 24 * 3600}${secureCookie()}` });
+    }
+
+    // Commentaires : les visiteurs (lien valide, déverrouillé) peuvent en ajouter ; le propriétaire peut les supprimer.
+    if ((m = p.match(new RegExp(`^/api/captures/${ID_RE}/comments(?:/([\\w-]{6,32}))?$`)))) {
+      const c = find(m[1]);
+      if (!c || (!local && (expired(c) || !unlocked(req, c)))) return json(res, 404, { error: 'Introuvable' });
+      if (method === 'POST' && !m[2]) {
+        if (c.allowComments === false && !local) return json(res, 403, { error: 'Commentaires désactivés' });
+        const ipKey = `cm|${req.socket.remoteAddress}|${req.headers['x-forwarded-for'] || ''}`;
+        if (blockedFor(ipKey)) return json(res, 429, { error: 'Trop de commentaires : patientez quelques minutes' });
+        let body = {};
+        try { body = JSON.parse((await readBody(req, 8000)).toString('utf8') || '{}'); } catch { return json(res, 400, { error: 'JSON invalide' }); }
+        const text = String(body.text ?? '').replace(/[\u0000-\u0008\u000b-\u001f]/g, ' ').trim().slice(0, 1000);
+        if (!text) return json(res, 400, { error: 'Commentaire vide' });
+        if ((c.comments || []).length >= 500) return json(res, 409, { error: 'Trop de commentaires sur ce lien' });
+        const t = Number(body.t);
+        const cm = {
+          id: crypto.randomBytes(6).toString('base64url'),
+          name: String(body.name ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 60) || (local ? 'Moi' : ''),
+          text,
+          t: (c.kind === 'video' || c.kind === 'enc') && Number.isFinite(t) && t >= 0 && t <= 86400 ? t : undefined,
+          at: new Date().toISOString(),
+        };
+        (c.comments ||= []).push(cm);
+        if (!local) fail(ipKey, 20, Infinity); // 20 commentaires, puis attente croissante
+        await persist();
+        return json(res, 201, cm);
+      }
+      if (method === 'DELETE' && m[2]) {
+        if (!local) return json(res, TOKEN ? 401 : 403, { error: TOKEN ? 'Clé d\'accès requise' : 'Réservé à cette machine' });
+        c.comments = (c.comments || []).filter((x) => x.id !== m[2]);
+        await persist();
+        return json(res, 204);
+      }
+      return json(res, 405, { error: 'Méthode non autorisée' });
     }
 
     if (method === 'PUT' && (m = p.match(new RegExp(`^/api/captures/${ID_RE}/thumb$`)))) {
@@ -460,7 +523,12 @@ const server = http.createServer(async (req, res) => {
       if (!local) return json(res, TOKEN ? 401 : 403, { error: TOKEN ? 'Clé d\'accès requise' : 'Réservé à cette machine' });
       if (method === 'PATCH') {
         let body = {};
-        try { body = JSON.parse((await readBody(req, 10_000)).toString('utf8') || '{}'); } catch { return json(res, 400, { error: 'JSON invalide' }); }
+        try { body = JSON.parse((await readBody(req, 2 * MB)).toString('utf8') || '{}'); } catch { return json(res, 400, { error: 'JSON invalide' }); }
+        if ('captions' in body) {
+          const caps = cleanCaptions(body.captions);
+          if (!caps) return json(res, 400, { error: 'Sous-titres invalides' });
+          if (caps.length) c.captions = caps; else delete c.captions;
+        }
         if (typeof body.title === 'string') c.title = body.title.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 300) || 'Capture sans titre';
         if ('expiresAt' in body) {
           if (body.expiresAt === null) delete c.expiresAt;
@@ -468,10 +536,11 @@ const server = http.createServer(async (req, res) => {
           else return json(res, 400, { error: 'Date d\'expiration invalide' });
         }
         if (typeof body.allowDownload === 'boolean') c.allowDownload = body.allowDownload;
+        if (typeof body.allowComments === 'boolean') c.allowComments = body.allowComments;
         if ('password' in body) {
           if (body.password === null || body.password === '') delete c.password;
-          else if (typeof body.password === 'string' && body.password.length <= 200) c.password = hashPassword(body.password);
-          else return json(res, 400, { error: 'Mot de passe invalide' });
+          else if (typeof body.password === 'string' && body.password.length >= 6 && body.password.length <= 200) c.password = await hashPassword(body.password);
+          else return json(res, 400, { error: 'Mot de passe : 6 caractères minimum' });
         }
         await persist();
         return json(res, 200, adminView(c));
@@ -500,7 +569,7 @@ server.on('error', (e) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`\n  LocalShot — serveur local démarré`);
+  console.log(`\n  LocalShot — serveur démarré (${HOST}:${PORT})`);
   console.log(`  Galerie      : http://localhost:${PORT}`);
   console.log(`  Données      : ${DATA_DIR}`);
   console.log(`  Stockage     : ${storage.current.describe()}`);
@@ -509,11 +578,6 @@ server.listen(PORT, HOST, () => {
     (e) => console.error(`  ⚠ Stockage   : ${e.message}`));
   if (PUBLIC_URL) console.log(`  Adresse      : ${PUBLIC_URL}`);
   if (TOKEN) console.log('  Accès        : protégé par clé (LOCALSHOT_TOKEN)');
-  if (LAN) {
-    for (const ip of lanAddresses()) console.log(`  Réseau local : http://${ip}:${PORT}/c/<id>  (liens de partage uniquement)`);
-    console.log('  ⚠ Mode LAN : les appareils de votre Wi-Fi qui connaissent un lien peuvent voir la capture.');
-  } else {
-    console.log('  Mode privé   : accessible uniquement depuis ce Mac (npm run start:lan pour partager en Wi-Fi)');
-  }
+  else if (HOST !== '127.0.0.1') console.log('  ⚠ Sans LOCALSHOT_TOKEN, personne ne peut gérer les captures à distance.');
   console.log('');
 });

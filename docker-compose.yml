@@ -1,0 +1,24 @@
+# Lancer : copier .env.example en .env, remplir LOCALSHOT_TOKEN et LOCALSHOT_PUBLIC_URL, puis « docker compose up -d ».
+# Placez un proxy HTTPS devant (Caddy, Traefik, Tailscale serve…) : le port n'est ouvert que sur cette machine.
+services:
+  localshot:
+    build: .
+    image: localshot
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      LOCALSHOT_HOST: 0.0.0.0
+      LOCALSHOT_DATA: /data
+    ports:
+      - "127.0.0.1:4777:4777"
+    volumes:
+      - localshot-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+volumes:
+  localshot-data:
