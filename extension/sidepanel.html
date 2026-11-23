@@ -33,6 +33,19 @@
     <i class="dot"></i><span id="recLabel">Enregistrer une vidéo</span><kbd>⌥⇧R</kbd>
   </button>
 
+  <section id="recCtl" class="rec-ctl" hidden aria-label="Enregistrement vidéo">
+    <div class="rc-top">
+      <i id="rcDot" class="rc-dot"></i><span id="rcState" aria-live="polite">Prêt</span>
+      <span id="rcTime" class="rc-time" role="timer">0:00</span>
+    </div>
+    <div class="rc-btns">
+      <button id="rcMain" type="button" class="rc-btn go">● Démarrer</button>
+      <button id="rcStop" type="button" class="rc-btn stop">■ Terminer</button>
+      <button id="rcCancel" type="button" class="rc-btn">✕ Annuler</button>
+    </div>
+    <button id="rcDetach" type="button" class="link rc-detach">↗ Détacher la barre</button>
+  </section>
+
   <div id="error" class="error" hidden></div>
 
   <div class="list-head">

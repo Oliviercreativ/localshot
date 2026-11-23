@@ -1,6 +1,7 @@
 // Panneau latéral : mêmes actions que le popup, plus les captures récentes, toujours visibles à droite.
 import { listCaptures, CHANGES } from './db.js';
 import { openRecorder, recorderStatus } from './recorder-launch.js';
+import { ACTIVE, fmtTime } from './ui/recbar.js';
 import { h, fmtDate, fmtDuration, isVideo } from './ui/common.js';
 
 const $ = (id) => document.getElementById(id);
@@ -52,16 +53,50 @@ recBtn.addEventListener('click', async () => {
   }
 });
 
+// Pendant un enregistrement, les commandes s'affichent ici ; « Détacher » les met aussi dans une barre flottante.
+const send = (type) => chrome.runtime.sendMessage({ type }).catch(() => {});
+let rec = { state: 'idle' }, sureTimer;
+
 async function refreshRecorder() {
-  const rec = await recorderStatus();
-  live = !!rec && ['recording', 'paused'].includes(rec.state);
-  recBtn.classList.toggle('live', live);
-  if (!live) return ($('recLabel').textContent = 'Enregistrer une vidéo');
-  const s = Math.floor(rec.elapsed / 1000);
-  $('recLabel').textContent = `${rec.state === 'paused' ? 'En pause' : 'Terminer la vidéo'} (${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')})`;
+  rec = (await recorderStatus()) || { state: 'idle' };
+  live = ACTIVE.includes(rec.state);
+  recBtn.hidden = live;
+  $('recCtl').hidden = !live;
+  if (!live) {
+    recBtn.classList.remove('live');
+    $('recLabel').textContent = rec.state === 'saving' ? 'Enregistrement de la vidéo…' : 'Enregistrer une vidéo';
+    return;
+  }
+  const { state } = rec;
+  $('rcDot').classList.toggle('on', state === 'recording');
+  $('rcState').textContent = { ready: 'Prêt', countdown: 'Préparez-vous…', recording: 'Enregistrement', paused: 'En pause' }[state];
+  $('rcTime').textContent = state === 'countdown' ? `${rec.count || ''}…` : fmtTime(state === 'ready' ? 0 : rec.elapsed);
+  const main = $('rcMain');
+  main.textContent = state === 'ready' || state === 'countdown' ? '● Démarrer' : state === 'paused' ? '▶ Reprendre' : '❚❚ Pause';
+  main.classList.toggle('go', state === 'ready');
+  main.disabled = state === 'countdown';
+  $('rcStop').hidden = state === 'ready' || state === 'countdown';
+  if (!$('rcCancel').classList.contains('sure')) $('rcCancel').textContent = '✕ Annuler';
+  $('rcDetach').textContent = rec.bar ? '↙ Fermer la barre flottante' : '↗ Détacher la barre';
 }
-// Le chronomètre n'est mis à jour que quand le panneau est visible.
-setInterval(() => document.visibilityState === 'visible' && refreshRecorder(), 1000);
+
+$('rcMain').addEventListener('click', () => send('rec-main').then(refreshRecorder));
+$('rcStop').addEventListener('click', () => send('rec-stop').then(refreshRecorder));
+$('rcCancel').addEventListener('click', (e) => {
+  const b = e.currentTarget;
+  if (rec.state === 'ready' || b.classList.contains('sure')) {
+    clearTimeout(sureTimer);
+    b.classList.remove('sure');
+    return send('rec-cancel').then(refreshRecorder);
+  }
+  b.classList.add('sure');
+  b.textContent = 'Supprimer la vidéo ?';
+  sureTimer = setTimeout(() => { b.classList.remove('sure'); refreshRecorder(); }, 3000);
+});
+// Chrome n'ouvre pas de fenêtre flottante depuis le panneau latéral : c'est la fenêtre d'enregistrement qui s'en charge.
+$('rcDetach').addEventListener('click', () => send(rec.bar ? 'rec-undock' : 'rec-detach').then(() => setTimeout(refreshRecorder, 300)));
+// Le chrono n'est mis à jour que quand le panneau est visible.
+setInterval(() => document.visibilityState === 'visible' && refreshRecorder(), 500);
 
 // ---------- Liste des captures récentes ----------
 const list = $('list');
