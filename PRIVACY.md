@@ -14,7 +14,7 @@ LocalShot is a screenshot and screen-recording extension built so that **your ca
 
 1. **Sharing** — when you click "Share", that single capture is uploaded to **the LocalShot server you configured yourself** (your Raspberry Pi, NAS, VPS or Docker container). No server is set by default. With "Encrypted", the server only receives an unreadable file; the key stays in the link.
 2. **Automatic captions** — only if you enable it in Settings and then click "Captions" on a video: the **audio track** (never the picture) is sent to the service you chose: your own Whisper server, Mistral AI, OpenAI or Groq. Their own privacy policies then apply. Your API key is stored only in your browser.
-3. **Click effect** (optional) — LocalShot asks Chrome for access to web pages only to draw click circles during a recording; nothing is read or sent. The access is returned to Chrome when you untick the option.
+3. **Click effect and annotations** (optional) — LocalShot asks Chrome for access to web pages only to draw click circles, or your drawings, on the page during a recording; nothing is read or sent. The access is returned to Chrome when you untick both options.
 
 ## Permissions
 
@@ -25,7 +25,7 @@ LocalShot is a screenshot and screen-recording extension built so that **your ca
 | `downloads` | Save captures to your Downloads folder when you click Download. |
 | `unlimitedStorage` | Keep large videos in the browser without a size limit. |
 | `sidePanel` | Show the LocalShot side panel. |
-| Optional host access | Only for the addresses you set (your server, your transcription service) and for the optional click effect. |
+| Optional host access | Only for the addresses you set (your server, your transcription service) and for the optional click effect and annotations. |
 
 ## Your control
 
@@ -45,5 +45,5 @@ LocalShot est une extension de captures d'écran et de vidéos conçue pour que 
 - **Aucune statistique, aucun pistage, aucun compte, aucune publicité.** Rien n'est envoyé aux auteurs.
 - **Partage** : seulement quand vous cliquez sur « Partager », et uniquement vers **le serveur LocalShot que vous avez réglé vous-même**. Aucun serveur par défaut. En mode « Chiffré », le serveur ne reçoit qu'un fichier illisible.
 - **Sous-titres automatiques** : seulement si vous les activez puis cliquez sur « Sous-titres » : **le son** (jamais l'image) est envoyé au service choisi (votre serveur Whisper, Mistral AI, OpenAI ou Groq), selon ses propres conditions.
-- **Effet de clic** (facultatif) : l'accès aux pages sert uniquement à dessiner les clics pendant un enregistrement ; il est rendu à Chrome dès que vous décochez l'option.
+- **Effet de clic et annotations** (facultatifs) : l'accès aux pages sert uniquement à dessiner les clics, ou vos annotations, sur la page pendant un enregistrement ; il est rendu à Chrome dès que vous décochez les deux options.
 - Désinstaller l'extension efface tout ce qu'elle stocke dans le navigateur.
