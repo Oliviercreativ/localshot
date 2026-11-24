@@ -265,9 +265,10 @@ function cancelRec() { discard = true; stop(); }
 async function goClick() {
   if (state !== 'ready') return;
   if (!pip && !(await sidePanelOpen())) {
-    if ($('cam').checked && !cam) await openBubble();
-    else await openPip(false);
+    if (!($('cam').checked && !cam)) await openPip(false);
   }
+  // Caméra cochée : la bulle s'ouvre avec ce clic (Chrome ne l'autorise pas sans clic).
+  if ($('cam').checked && !cam) await openBubble();
   renderLive();
   begin();
 }
@@ -276,7 +277,7 @@ async function start() {
   if (state !== 'idle') return;
   showError('');
   // Caméra cochée mais pas encore ouverte (préférence du popup) : ce clic permet de l'ouvrir.
-  if ($('cam').checked && !cam) await openBubble();
+  if ($('cam').checked && !cam && navigator.userActivation?.isActive) await openBubble();
   $('liveHint').textContent = '';
   discard = false;
   if (!MIME) return showError('Ce navigateur ne sait pas enregistrer de vidéo.');
@@ -550,8 +551,8 @@ function syncPrefs() {
 addEventListener('storage', (e) => e.key === 'rec-prefs' && syncPrefs());
 
 // Lancé depuis le popup ou le panneau latéral : on passe directement au choix de Chrome.
-// Avec la caméra, Chrome exige un clic dans cette fenêtre pour ouvrir la bulle : on attend « Choisir quoi enregistrer ».
-if (AUTO && !$('cam').checked) {
+// La bulle caméra, qui demande un clic, s'ouvrira avec « Démarrer ».
+if (AUTO) {
   show('live');
   $('go').hidden = $('pause').hidden = $('stop').hidden = $('float').hidden = true;
   $('timer').textContent = '0:00';

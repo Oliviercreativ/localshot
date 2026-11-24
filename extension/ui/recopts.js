@@ -36,14 +36,16 @@ export function mountRecOptions(box, { onError = () => {}, panel = false } = {})
   chrome.permissions.contains(PAGES).then((ok) => { if (!ok && inputs.clicks.checked) { inputs.clicks.checked = false; save(); } }).catch(() => {});
   for (const [id, input] of Object.entries(inputs)) {
     input.addEventListener('change', async () => {
-      if (id === 'clicks') {
-        if (input.checked && !(await chrome.permissions.request(PAGES).catch(() => false))) {
-          input.checked = false;
-          onError('Sans l\'autorisation de Chrome, l\'effet de clic ne peut pas s\'afficher dans les pages.');
-        }
-        if (!input.checked) chrome.permissions.remove(PAGES).catch(() => {});
-      }
+      // Enregistré tout de suite : la fenêtre d'autorisation de Chrome ferme le popup avant la réponse.
       save();
+      if (id !== 'clicks') return;
+      if (!input.checked) { chrome.permissions.remove(PAGES).catch(() => {}); return; }
+      if (await chrome.permissions.contains(PAGES).catch(() => false)) return;
+      if (!(await chrome.permissions.request(PAGES).catch(() => false))) {
+        input.checked = false;
+        save();
+        onError('Sans l\'autorisation de Chrome, l\'effet de clic ne peut pas s\'afficher dans les pages.');
+      }
     });
   }
   return inputs;
