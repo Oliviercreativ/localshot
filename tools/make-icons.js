@@ -50,5 +50,4 @@ function draw(size) {
 }
 const root = path.resolve(__dirname, '..');
 for (const s of [16, 32, 48, 128]) fs.writeFileSync(path.join(root, 'extension/icons', `icon-${s}.png`), draw(s));
-fs.writeFileSync(path.join(root, 'server/public/icon.png'), draw(128));
 console.log('Icônes générées.');

@@ -1,14 +1,11 @@
 import { getCapture, updateCapture, deleteCapture } from '../db.js';
 import { createPlayer } from './player.js';
 import { saveConf, saveToComputer, folderAccess } from './savefolder.js';
-import { linkOptions } from './linkopts.js';
 import { openEditor } from './editor.js';
 import { trimVideo, makeGif } from './videotools.js';
 import { transcribe, transcribeConf, PROVIDERS, toSrt, toVtt } from './transcribe.js';
 import { renderTranscript } from './transcript.js';
-import { renderComments } from './comments.js';
-import { encryptCapture, E2E_MIME } from './e2e.js';
-import { makeThumb, fmtDate, fmtSize, fmtDuration, isVideo, toast, download, api, serverConf, revokeShare } from './common.js';
+import { makeThumb, fmtDate, fmtSize, fmtDuration, isVideo, toast, download } from './common.js';
 
 const $ = (id) => document.getElementById(id);
 const id = new URLSearchParams(location.search).get('id');
@@ -39,7 +36,6 @@ if (!c) {
       URL.revokeObjectURL(img.src);
       showImage(img, URL.createObjectURL(c.blob), c.width, c.height);
       $('restore').hidden = !c.original;
-      if (c.sharedId) toast('Le lien partagé montre encore l\'ancienne version : arrêtez puis relancez le partage.');
       autoSave(false);
     }
     $('annotate').addEventListener('click', async () => {
@@ -98,97 +94,9 @@ if (!c) {
 
   $('del').addEventListener('click', async () => {
     if (!confirm(`Supprimer ${isVideo(c) ? 'cette vidéo' : 'cette capture'} ? Cette action est définitive.`)) return;
-    const why = await revokeShare(c);
-    if (why && !confirm(`Le lien partagé n'a pas pu être supprimé (${why}) : il fonctionne peut-être encore.\n\nSupprimer quand même la copie locale ?`)) return;
     await deleteCapture(id);
     location.href = 'gallery.html';
   });
-
-  // ---------- Partage Wi-Fi (optionnel, via le serveur local) ----------
-  const hint = $('shareHint');
-  async function health() {
-    try { return await (await api('/api/health', { signal: AbortSignal.timeout(4000) })).json(); }
-    catch { return null; }
-  }
-  async function shownShare(hl) {
-    const shared = c.sharedId && (await api(`/api/captures/${c.sharedId}`).then((r) => (r.ok ? r.json() : null)).catch(() => null));
-    if (!shared) { $('shareBox').hidden = true; $('linkOpts').hidden = true; $('comments').hidden = true; $('share').hidden = false; return; }
-    if (shared.canEdit) {
-      linkOptions($('linkOpts'), shared, { request: api, notify: toast });
-      renderComments($('comments'), shared, { request: api, player: document.querySelector('.lsp'), owner: true, notify: toast });
-    }
-    const base = hl?.publicUrl || serverConf().url;
-    $('shareUrl').value = `${base}/c/${c.sharedId}${c.shareKey ? `#k=${c.shareKey}` : ''}`;
-    $('shareBox').hidden = false;
-    $('share').hidden = true;
-    hint.textContent = /\.ts\.net$/i.test(new URL(base).hostname)
-      ? 'Ouvrable seulement depuis vos appareils connectés à Tailscale. Pour un client, il faut une adresse publique (Tailscale Funnel ou serveur en ligne).'
-      : 'Ouvrable par toute personne qui a le lien.';
-  }
-
-  $('share').addEventListener('click', async () => {
-    const hl = await health();
-    if (!serverConf().url) {
-      hint.textContent = 'Pour partager, indiquez d\'abord votre serveur LocalShot (Raspberry Pi, NAS, VPS ou Docker) dans « Réglages ». Sans serveur, tout reste sur cet ordinateur.';
-      return toast('Aucun serveur de partage réglé', 'error');
-    }
-    if (!hl) {
-      hint.textContent = `Serveur ${new URL(serverConf().url).host} injoignable : est-il allumé, et Tailscale connecté sur cet ordinateur ?`;
-      return toast('Serveur de partage injoignable', 'error');
-    }
-    // Chiffrement de bout en bout (option) : le serveur ne reçoit qu'un bloc illisible, la clé reste dans le lien.
-    const e2e = $('e2e').checked;
-    let payload, shareKey = null;
-    if (e2e) {
-      const enc = await encryptCapture(c.blob, { title: c.title, kind: c.kind || 'image', mime: isVideo(c) ? c.mime : 'image/png', width: c.width, height: c.height, duration: c.duration, captions: c.captions || undefined });
-      payload = { headers: { 'Content-Type': E2E_MIME }, body: enc.blob };
-      shareKey = enc.key;
-    } else {
-      payload = {
-        headers: {
-          'Content-Type': isVideo(c) ? c.mime : 'image/png',
-          'X-Title': encodeURIComponent(c.title),
-          'X-Source-Url': encodeURIComponent(c.sourceUrl || ''),
-          'X-Mode': c.mode || '',
-          'X-Width': String(c.width || 0),
-          'X-Height': String(c.height || 0),
-          'X-Duration': String(c.duration || 0),
-        },
-        body: c.blob,
-      };
-    }
-    const r = await api('/api/captures', { method: 'POST', ...payload });
-    if (r.status === 401 || r.status === 403) {
-      hint.textContent = 'Le serveur refuse l\'accès : vérifiez la clé dans les réglages (bouton « Réglages » de la galerie).';
-      return toast('Clé d\'accès refusée', 'error');
-    }
-    if (!r.ok) return toast(r.status === 413 ? 'Fichier trop volumineux pour le partage' : 'Partage impossible', 'error');
-    const sharedId = (await r.json()).id;
-    // Sous-titres et vignette (aperçu du lien) : jamais en clair pour un partage chiffré.
-    if (!e2e && c.captions?.length) await api(`/api/captures/${sharedId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ captions: c.captions }) }).catch(() => {});
-    if (!e2e && c.thumb) await api(`/api/captures/${sharedId}/thumb`, { method: 'PUT', headers: { 'Content-Type': c.thumb.type || 'image/webp' }, body: c.thumb }).catch(() => {});
-    c = await updateCapture(id, { sharedId, sharedServer: serverConf().url, shareKey });
-    await shownShare(hl);
-    $('copyLink').click();
-  });
-
-  $('copyLink').addEventListener('click', async () => {
-    await navigator.clipboard.writeText($('shareUrl').value);
-    toast('Lien copié');
-  });
-
-  $('unshare').addEventListener('click', async () => {
-    const why = await revokeShare(c);
-    if (why) {
-      hint.textContent = `Impossible d'arrêter le partage : ${why}. Le lien fonctionne peut-être encore ; réessayez.`;
-      return toast('Partage non arrêté', 'error');
-    }
-    c = await updateCapture(id, { sharedId: null, sharedServer: null, shareKey: null });
-    hint.textContent = 'Partage arrêté : le lien ne fonctionne plus.';
-    await shownShare(null);
-  });
-
-  if (c.sharedId) shownShare(await health());
 }
 
 // ---------- Export MP4, WebM, GIF (vidéos) ----------
@@ -271,8 +179,6 @@ function setupSubs(player) {
     c = await updateCapture(id, { captions: caps.length ? caps : null });
     player.setCaptions(caps);
     show();
-    // Le lien partagé reçoit aussi les sous-titres corrigés.
-    if (c.sharedId && !c.shareKey) api(`/api/captures/${c.sharedId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ captions: caps }) }).catch(() => {});
   }
   function show() {
     const caps = c.captions || [];

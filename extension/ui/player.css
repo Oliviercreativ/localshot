@@ -1,4 +1,4 @@
-/* Lecteur vidéo LocalShot. Copie identique dans extension/ui/ et server/public/ (vérifié par npm test). */
+/* Lecteur vidéo LocalShot. */
 .lsp {
   --lsp-accent: #f97316; --lsp-accent-d: #ea580c;
   /* Toute la largeur disponible, sans dépasser la hauteur de l'écran ; format fixé d'avance : la taille ne saute pas au chargement. */
@@ -83,5 +83,3 @@
   text-align: center; pointer-events: none; transition: bottom .25s; }
 .lsp.is-idle .lsp-cap { bottom: 18px; }
 .lsp-cc[aria-pressed="true"] { color: var(--lsp-accent); }
-.lsp-marks { position: absolute; inset: 0; pointer-events: none; }
-.lsp-mark { position: absolute; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: #facc15; box-shadow: 0 0 0 2px rgba(15,23,42,.6); }

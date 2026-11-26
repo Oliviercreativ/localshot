@@ -169,7 +169,7 @@ function row(c) {
   if (url) urls.push(url);
   const thumb = h('div', { class: 'thumb' }, url ? h('img', { src: url, alt: '', decoding: 'async', loading: 'lazy' }) : '');
   if (isVideo(c)) thumb.append(h('span', { class: 'dur' }, svg('play'), h('span', {}, fmtDuration(c.duration))));
-  const meta = `${fmtDate(c.createdAt)}${c.sharedId ? ' · partagée' : ''}`;
+  const meta = fmtDate(c.createdAt);
   const btn = h('button', { class: 'item', title: c.title }, thumb,
     h('div', { class: 'info' }, h('div', { class: 'title' }, c.title), h('div', { class: 'meta' }, meta)));
   btn.addEventListener('click', () => page(`ui/viewer.html?id=${encodeURIComponent(c.id)}`));

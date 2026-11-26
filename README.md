@@ -1,7 +1,7 @@
 # LocalShot — 100% local screenshots and screen recordings
 
 A private alternative to Awesome Screenshot / Loom: a Chrome extension with **no Internet access at all**.
-Captures and the gallery live **inside the extension**, on your computer. No server to run day to day.
+Captures and the gallery live **inside the extension**, on your computer. No server, no account, no upload.
 
 > The extension's interface is currently in French. French button labels are quoted below with their English meaning.
 
@@ -79,87 +79,6 @@ deletes them**. Keep a copy on disk:
 
 The gallery and the side panel can be filtered by **All / Photos / Videos**.
 
-## Sharing (optional, your own server)
-
-Without a server, **nothing leaves your computer**. To send links, run the LocalShot server on a machine you control
-(Raspberry Pi, NAS, VPS or Docker, see below), then in the extension: « Réglages » (Settings) → server address + access key.
-On a capture page, **« Partager »** (Share) uploads only that capture and copies the link; « Arrêter le partage » (Stop sharing) deletes it from the server.
-
-- **Encrypted** (tick « Chiffré » before sharing): the capture, its title and captions are encrypted in the browser (AES-256-GCM).
-  The server stores an unreadable file; the key travels in the link after `#`, which browsers never send to the server.
-  No preview or thumbnail for these links.
-- **Comments**: viewers can leave comments, pinned to a moment of the video (markers on the progress bar).
-  You see them on the capture page and can delete them; they can be turned off per link.
-
-### Link options
-
-Once a capture is shared, its page (in the extension or in the server's web gallery) shows **link options**:
-
-- **Views**: how many times the link was opened (counted on your server, no third-party analytics; your own visits are not counted).
-- **Expiry**: never, 24 hours, 7 days or 30 days. Expired links show "This link has expired".
-- **Password**: visitors must enter it before seeing anything (title included). Changing or removing it revokes access already given.
-  Send the password separately from the link.
-- **Allow download**: untick to hide the download button for visitors. This only discourages: anything shown on screen can still be recorded.
-- **Link preview**: when the server has a public address (`LOCALSHOT_PUBLIC_URL`), links pasted in Slack, WhatsApp or an email
-  show the title and a thumbnail. Nothing is revealed for password-protected links.
-
-### Web app (PWA) and upload
-
-The server's web gallery can be **installed as an app** on Mac or PC (Chrome/Edge: « Installer l'application » button, Safari: File → Add to Dock).
-From there you can also **add PNG, MP4 or WebM files** (button or drag and drop), and use the system « Share to LocalShot » menu.
-
-### Docker
-
-```bash
-cp .env.example .env   # set LOCALSHOT_TOKEN and LOCALSHOT_PUBLIC_URL
-docker compose up -d
-```
-
-The container is read-only, runs as a non-root user and only listens on `127.0.0.1:4777`: put an HTTPS proxy in front
-(Caddy, Traefik, `tailscale serve`, Cloudflare Tunnel…). Data lives in the `localshot-data` volume.
-
-## Where shared files are stored
-
-The LocalShot server stores shared files wherever you choose (`STORAGE` in `.env`, see [.env.example](.env.example)):
-
-| `STORAGE` | Where | For whom |
-|---|---|---|
-| `local` (default) | the server's disk (Mac, Raspberry Pi, NAS, VPS) | keep everything at home |
-| `s3` | any S3-compatible service: **Cloudflare R2**, AWS S3, Backblaze B2, Scaleway, OVH, Wasabi, MinIO, Garage | reliable links for clients, without a machine running at home |
-
-- The extension **only talks to your server**: no cloud key is ever stored in Chrome.
-- The bucket stays **private**; videos are played through short-lived signed URLs (smooth playback, seeking).
-- S3 signing written without dependencies (`server/storage/sigv4.js`), checked against AWS's official test vectors (`npm test`).
-- Switching storage does not break old links: already-shared files keep being read from their original storage.
-
-Cloudflare R2 example: create a bucket and an "Object Read & Write" API token limited to that bucket, then
-
-```bash
-STORAGE=s3
-S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
-S3_BUCKET=localshot
-S3_ACCESS_KEY_ID=…
-S3_SECRET_ACCESS_KEY=…
-```
-
-## Server on a Raspberry Pi (Tailscale)
-
-To reach your shares from your iPhone or another computer, even away from home, without opening anything to the Internet.
-
-1. Install **Tailscale** on the Mac, the iPhone and the Pi (same account). On the Pi:
-   `curl -fsSL https://tailscale.com/install.sh | sh` then `sudo tailscale up --ssh`.
-   In the Tailscale admin console, enable **MagicDNS** and **HTTPS Certificates**.
-2. From this folder, on the Mac: `bash deploy/pi/push.sh <pi-name>`
-   (add a 2nd argument to store data elsewhere, e.g. `/mnt/ssd/localshot`).
-   The script installs the `localshot` service (systemd, hardened), enables `tailscale serve` (private HTTPS)
-   and automatic security updates, and prints an **access key**.
-3. In the extension: gallery → **« Réglages »** (Settings) → address `https://<pi-name>.<tailnet>.ts.net` + the key.
-   Chrome asks for access to that single address only.
-4. On the iPhone, open the same address in Safari and enter the key: the gallery appears.
-
-The server only listens on the Pi's `127.0.0.1`; only Tailscale (your devices) can reach it.
-Key and settings: `/etc/localshot.env` on the Pi. Logs: `journalctl -u localshot`.
-
 ## Privacy
 
 - Permissions: `activeTab` (only the tab where **you** click / use the shortcut),
@@ -167,20 +86,10 @@ Key and settings: `/etc/localshot.env` on the Pi. Logs: `journalctl -u localshot
   `unlimitedStorage` (no storage limit for captures), `sidePanel` (the side panel, which shows no warning and grants no access to your pages).
 - Optional permission (only if you tick "Click effect"): access to pages, used only
   during a video recording to draw clicks, and handed back to Chrome as soon as you untick the option.
-- No network access by default: the extension can only reach the addresses you set (your server, your transcription service),
-  each one approved in a Chrome prompt. Full policy: [PRIVACY.md](PRIVACY.md).
+- No network access by default: the extension can only reach the transcription service you set (optional),
+  approved in a Chrome prompt. Full policy: [PRIVACY.md](PRIVACY.md).
 - No analytics, no account, no cloud.
 - No permanent access to your sites: the extension does not read your pages in the background.
-
-Sharing server:
-- `npm start` listens only on `127.0.0.1` (`LOCALSHOT_HOST=0.0.0.0` in Docker); put `tailscale serve` or an HTTPS proxy in front.
-- Only captures whose link is known (random `/c/<id>`) are visible; with `LOCALSHOT_TOKEN` set,
-  listing, adding, editing and deleting require the access key
-  (`Authorization` header for the extension; for the web gallery, an `HttpOnly` + `SameSite=Strict` cookie
-  holding a random session ID, revoked on logout).
-- A share-link visitor only receives the capture's public information (never a local file path).
-- Link passwords are hashed with scrypt; wrong attempts are throttled per link and per address.
-- `Host` check (anti DNS-rebinding) and `Origin` check, no CORS, strict CSP.
 
 ## Known limitations
 
@@ -191,10 +100,9 @@ Sharing server:
 ## Roadmap
 
 - Video: camera bubble for tab recordings too, faster trimming (WebCodecs), annotations on videos
-- Automatic sync to your server (today: « Partager » button, one capture at a time)
-- Chrome Web Store release (see [docs/CHROME-WEB-STORE.md](docs/CHROME-WEB-STORE.md))
+- Chrome Web Store publishing notes: [docs/CHROME-WEB-STORE.md](docs/CHROME-WEB-STORE.md)
 
 ## License
 
-[AGPL-3.0-or-later](LICENSE): you may use, modify and redistribute LocalShot; if you offer
-a modified version of the server to other people (over a network), you must publish your changes.
+[AGPL-3.0-or-later](LICENSE): you may use, modify and redistribute LocalShot; if you distribute
+a modified version, you must publish your changes under the same license.

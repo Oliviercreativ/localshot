@@ -6,7 +6,7 @@ Rien dans le code ne bloque la publication :
 
 - **Manifest V3**, aucun code chargé depuis Internet (pas de `eval`, pas de script distant), tout est dans le paquet.
 - **Un seul objectif** clair : capturer l'écran et l'enregistrer en vidéo.
-- **Permissions minimales** : aucune permission d'hôte obligatoire. L'accès aux pages (`http(s)://*/*`) est **facultatif** et demandé seulement pour l'effet de clic ou l'adresse de votre serveur.
+- **Permissions minimales** : aucune permission d'hôte obligatoire. L'accès aux pages (`http(s)://*/*`) est **facultatif** et demandé seulement pour l'effet de clic ou l'adresse du service de transcription.
 - **Politique de confidentialité** prête : [PRIVACY.md](../PRIVACY.md).
 
 Points d'attention :
@@ -33,7 +33,7 @@ Points d'attention :
 ## Textes à copier-coller
 
 **Objectif unique** :
-> LocalShot takes screenshots (visible area, full page, selected area) and screen recordings, stores them locally in the browser, and lets the user annotate, trim and optionally share them on their own server.
+> LocalShot takes screenshots (visible area, full page, selected area) and screen recordings, stores them locally in the browser, and lets the user annotate and trim them.
 
 **Justification des permissions** :
 
@@ -42,19 +42,19 @@ Points d'attention :
 - `downloads` : save captures to the user's Downloads folder when they click Download.
 - `unlimitedStorage` : screen recordings are large; they are stored locally in IndexedDB.
 - `sidePanel` : optional side panel with capture buttons and recent captures.
-- Hôtes facultatifs `http://*/*`, `https://*/*` : requested at runtime only (1) to draw click circles during a recording when the user enables "Click effect", and (2) for the single address of the user's own sharing server or transcription service, entered by the user. Never requested at install.
+- Hôtes facultatifs `http://*/*`, `https://*/*` : requested at runtime only (1) to draw click circles during a recording when the user enables "Click effect", and (2) for the single address of the transcription service entered by the user. Never requested at install.
 
 **Code distant** : « Non, je n'utilise pas de code distant ».
 
 **Pratiques de confidentialité** (formulaire) :
 
-- Cocher seulement **« Contenu du site Web »** : captures et son peuvent quitter l'ordinateur, à la demande de l'utilisateur, vers son propre serveur ou le service de transcription choisi. Rien n'est envoyé au développeur.
+- Cocher seulement **« Contenu du site Web »** : seul le son d'une vidéo peut quitter l'ordinateur, à la demande de l'utilisateur, vers le service de transcription choisi. Rien n'est envoyé au développeur.
 - Cocher les certifications : pas de vente de données, pas d'usage sans rapport avec l'objectif, pas d'usage pour le crédit.
-- Mentionner dans la politique : contenu des captures transmis uniquement vers le serveur choisi par l'utilisateur ; audio transmis au service de transcription choisi, à sa demande.
+- Mentionner dans la politique : les captures ne quittent jamais l'ordinateur ; l'audio est transmis au service de transcription choisi, à la demande de l'utilisateur.
 - URL de la politique : le lien GitHub vers `PRIVACY.md` (le dépôt doit être **public** à ce moment-là).
 
 **Description courte** (132 caractères max) :
-> Private screenshots & screen recordings. Stored in your browser, blur & annotate, share on your own server. No account, no tracking.
+> Private screenshots & screen recordings. Stored in your browser, blur & annotate, trim videos. No account, no upload, no tracking.
 
 **Catégorie** : Productivité (outils).
 

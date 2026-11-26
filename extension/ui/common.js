@@ -1,36 +1,18 @@
 import { saveToComputer } from './savefolder.js';
-// Serveur de partage : aucun par défaut. L'utilisateur indique le sien (Raspberry Pi, NAS, VPS, Docker…).
-const CONF_KEY = 'server-conf';
-export function serverConf() {
-  try {
-    const c = JSON.parse(localStorage.getItem(CONF_KEY) || '{}');
-    // L'ancien serveur local par défaut n'est plus utilisé.
-    const url = c.url && c.url !== 'http://localhost:4777' ? c.url : '';
-    return { url, key: url ? c.key || '' : '' };
-  } catch { return { url: '', key: '' }; }
-}
-export const saveServerConf = (c) => localStorage.setItem(CONF_KEY, JSON.stringify(c));
-
-// Appel au serveur avec la clé d'accès si elle est configurée.
-export function api(path, opts = {}) {
-  const { url, key } = serverConf();
-  if (!url) return Promise.reject(new Error('aucun serveur de partage réglé'));
-  const headers = { ...(opts.headers || {}) };
-  if (key) headers.Authorization = `Bearer ${key}`;
-  return fetch(url + path, { ...opts, headers, credentials: 'omit' });
-}
-
-// Arrête un partage. Renvoie null si c'est confirmé par le serveur qui l'a émis, sinon la raison de l'échec.
-export async function revokeShare(rec) {
-  if (!rec.sharedId) return null;
-  const { url } = serverConf();
-  if (!url) return 'aucun serveur de partage réglé';
-  if (rec.sharedServer && rec.sharedServer !== url) return `partagé sur un autre serveur (${new URL(rec.sharedServer).host})`;
-  try {
-    const r = await api(`/api/captures/${encodeURIComponent(rec.sharedId)}`, { method: 'DELETE' });
-    if (r.ok || r.status === 404) return null;
-    return r.status === 401 || r.status === 403 ? 'clé d\'accès refusée' : `erreur du serveur (${r.status})`;
-  } catch { return 'serveur injoignable'; }
+// Le partage par serveur a été retiré (0.10) : on oublie l'ancienne adresse et son autorisation réseau,
+// sauf si elle sert aussi aux sous-titres ou si l'effet de clic a l'accès à tous les sites.
+const OLD_SERVER = 'server-conf';
+if (localStorage.getItem(OLD_SERVER)) {
+  let old = '';
+  try { old = new URL(JSON.parse(localStorage.getItem(OLD_SERVER)).url).origin; } catch {}
+  localStorage.removeItem(OLD_SERVER);
+  let tr = '';
+  try { tr = new URL(JSON.parse(localStorage.getItem('transcribe-conf') || '{}').url).origin; } catch {}
+  if (old && old !== tr) {
+    chrome.permissions.contains({ origins: ['http://*/*', 'https://*/*'] })
+      .then((all) => all || chrome.permissions.remove({ origins: [`${old}/*`] }))
+      .catch(() => {});
+  }
 }
 
 export function h(tag, attrs = {}, ...kids) {

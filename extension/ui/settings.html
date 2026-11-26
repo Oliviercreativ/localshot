@@ -55,24 +55,6 @@
     </form>
     <p id="trStatus" class="hint"></p>
 
-    <h2>Serveur de partage</h2>
-    <p class="muted">Facultatif. Sans serveur, rien ne quitte cet ordinateur. Pour envoyer des liens, indiquez <b>votre</b> serveur LocalShot :
-      Raspberry Pi (adresse Tailscale, par exemple <code>https://pi.tailnet-1234.ts.net</code>), NAS, VPS ou conteneur Docker.
-      Il reçoit <b>uniquement</b> les captures que vous partagez.</p>
-
-    <form id="form">
-      <label for="url">Adresse du serveur</label>
-      <input id="url" type="url" required placeholder="https://pi.tailnet-1234.ts.net" autocomplete="off" spellcheck="false">
-      <label for="key">Clé d'accès</label>
-      <input id="key" type="password" autocomplete="off" spellcheck="false">
-      <div class="row">
-        <button class="btn primary" type="submit">Enregistrer et tester</button>
-        <button id="reset" class="btn" type="button">Oublier ce serveur</button>
-      </div>
-    </form>
-    <p id="status" class="notice" hidden></p>
-    <p class="hint">Chrome vous demandera l'autorisation d'accéder à <b>cette seule adresse</b>. La clé reste dans Chrome, sur cet ordinateur.
-      Les captures non partagées ne quittent jamais votre ordinateur.</p>
   </main>
   <div id="toast" class="toast" hidden></div>
   <script type="module" src="settings.js"></script>

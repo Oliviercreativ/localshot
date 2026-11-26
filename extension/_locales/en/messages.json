@@ -3,7 +3,7 @@
     "message": "LocalShot — 100% local screenshots"
   },
   "extDescription": {
-    "message": "Screenshots and screen recordings stored only in your browser. Annotations, blur, trimming, sharing on your own server."
+    "message": "Screenshots and screen recordings stored only in your browser. Annotations, blur, trimming. Nothing is uploaded."
   },
   "cmdVisible": {
     "message": "Capture the visible area"

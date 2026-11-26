@@ -3,7 +3,7 @@
     "message": "LocalShot — captures 100 % locales"
   },
   "extDescription": {
-    "message": "Captures d'écran et vidéos stockées uniquement dans votre navigateur. Annotations, flou, découpe, partage sur votre propre serveur."
+    "message": "Captures d'écran et vidéos stockées uniquement dans votre navigateur. Annotations, flou, découpe. Rien n'est envoyé en ligne."
   },
   "cmdVisible": {
     "message": "Capturer la partie visible"

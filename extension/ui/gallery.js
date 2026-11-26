@@ -1,6 +1,6 @@
 import { listCaptures, deleteCapture } from '../db.js';
 import { restoreFromFolder } from './restore.js';
-import { h, fmtDate, fmtSize, fmtDuration, isVideo, toast, download, revokeShare } from './common.js';
+import { h, fmtDate, fmtSize, fmtDuration, isVideo, toast, download } from './common.js';
 import { svg } from './icons.js';
 
 const grid = document.getElementById('grid');
@@ -26,8 +26,6 @@ function card(c) {
   const del = h('button', { class: 'card-del', title: 'Supprimer', 'aria-label': 'Supprimer' }, svg('trash'));
   del.addEventListener('click', async () => {
     if (!confirm(`Supprimer « ${c.title} » ? Cette action est définitive.`)) return;
-    const why = await revokeShare(c);
-    if (why && !confirm(`Le lien partagé n'a pas pu être supprimé (${why}) : il fonctionne peut-être encore.\n\nSupprimer quand même la copie locale ?`)) return;
     await deleteCapture(c.id);
     items = items.filter((x) => x.id !== c.id);
     render();
@@ -35,7 +33,7 @@ function card(c) {
     toast('Supprimé');
   });
   const kind = isVideo(c) ? `Vidéo ${fmtDuration(c.duration)}` : `${c.width}×${c.height}`;
-  const meta = `${fmtDate(c.createdAt)} · ${kind} · ${fmtSize(c.size)}${c.sharedId ? ' · partagée' : ''}`;
+  const meta = `${fmtDate(c.createdAt)} · ${kind} · ${fmtSize(c.size)}`;
   const link = h('a', { class: 'card-link', href: `viewer.html?id=${encodeURIComponent(c.id)}` },
     thumbBox(c),
     h('div', { class: 'card-body' }, h('div', { class: 'card-title' }, c.title), h('div', { class: 'card-meta' }, meta)));

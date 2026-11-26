@@ -40,9 +40,6 @@
       <button id="subs" class="btn" hidden>Sous-titres</button>
       <button id="copyImg" class="btn primary">Copier l'image</button>
       <button id="download" class="btn">Télécharger</button>
-      <label class="e2e-opt" title="Le serveur ne reçoit qu'un fichier illisible ; la clé voyage dans le lien. Pas d'aperçu ni de vignette.">
-        <input id="e2e" type="checkbox"> Chiffré</label>
-      <button id="share" class="btn">Partager</button>
       <button id="del" class="btn danger">Supprimer</button>
     </div>
   </header>
@@ -69,17 +66,6 @@
         <a id="source" class="source" target="_blank" rel="noopener noreferrer" hidden data-icon="external"><span>URL source</span></a>
         <button id="restore" class="link-btn" hidden>Revenir à l'original</button>
       </div>
-      <div id="shareBox" class="share" hidden>
-        <label for="shareUrl">Lien de partage</label>
-        <div class="share-row">
-          <input id="shareUrl" readonly>
-          <button id="copyLink" class="btn primary">Copier</button>
-          <button id="unshare" class="btn danger">Arrêter le partage</button>
-        </div>
-      </div>
-      <p id="shareHint" class="hint"></p>
-      <div id="linkOpts" class="link-opts" hidden></div>
-      <div id="comments" class="comments" hidden></div>
     </section>
   </main>
   <div id="toast" class="toast" hidden></div>

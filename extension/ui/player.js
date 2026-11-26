@@ -1,5 +1,4 @@
 // Lecteur vidéo LocalShot, aux couleurs de l'application. Sans dépendance.
-// Ce fichier existe en deux copies identiques : extension/ui/ et server/public/ (vérifié par npm test).
 const SPEEDS = [0.5, 1, 1.25, 1.5, 1.75, 2];
 const SPEED_KEY = 'localshot-speed';
 
@@ -264,20 +263,6 @@ export function createPlayer({ src, poster, duration: knownDuration, width = 0, 
   video.addEventListener('timeupdate', syncCaps);
   video.addEventListener('seeked', syncCaps);
   root.setCaptions = (list) => { caps = Array.isArray(list) ? list : []; syncCaps(); };
-  // Repères (commentaires horodatés) sur la barre de progression.
-  let markTimes = [];
-  const marks = el('div', 'lsp-marks');
-  track.append(marks);
-  function paintMarks() {
-    const d = duration();
-    marks.replaceChildren(...(d ? markTimes : []).map((t) => {
-      const m = el('i', 'lsp-mark');
-      m.style.left = `${Math.min(100, (t / d) * 100)}%`;
-      return m;
-    }));
-  }
-  video.addEventListener('durationchange', paintMarks);
-  root.setMarkers = (times) => { markTimes = Array.isArray(times) ? times : []; paintMarks(); };
   root.setCaptions(captions);
 
   // ---------- Clavier (quand le lecteur a le focus) ----------

@@ -2,12 +2,9 @@
   "name": "localshot",
   "version": "0.5.0",
   "private": true,
-  "description": "Alternative open source et respectueuse de la vie privée à Loom : captures d'écran et vidéos locales, partage auto-hébergé.",
+  "description": "Alternative open source et respectueuse de la vie privée à Loom : captures d'écran et vidéos 100 % locales.",
   "scripts": {
-    "start": "node server/server.js",
-    "icons": "node tools/make-icons.js",
-    "test": "node --test server/test/*.test.js",
-    "start:env": "node --env-file=.env server/server.js"
+    "icons": "node tools/make-icons.js"
   },
   "engines": {
     "node": ">=18"

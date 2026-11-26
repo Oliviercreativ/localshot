@@ -38,8 +38,7 @@ const P = {
   click: '<path d="M14 4.1 12 6M5.1 8l-2.9-.8M6 12l-1.9 2M7.2 2.2 8 5.1"/><path d="M9 9.5a.5.5 0 0 1 .7-.5l11 4.5a.5.5 0 0 1 0 .9l-4.2 1.3a1 1 0 0 0-.6.6l-1.3 4.2a.5.5 0 0 1-.9 0z"/>',
 };
 
-// Le style .ico est dans les feuilles de style (app.css, popup.css, sidepanel.css, barre flottante) :
-// la page de partage du serveur interdit les styles ajoutés par script.
+// Le style .ico est dans les feuilles de style (app.css, popup.css, sidepanel.css, barre flottante).
 
 /** Élément <svg> de l'icône `name`, créé dans `doc` (la fenêtre flottante a son propre document). */
 export function svg(name, doc = document) {
